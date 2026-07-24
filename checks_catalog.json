@@ -661,6 +661,33 @@
         "hana_validate_cloud": false
       },
       "notes": "Runs automated HANA, S4H/ABAP, host, security, and monitoring checks only on servers whose generated component groups make them applicable."
+    },
+    "fully-tested": {
+      "tags": [
+        "login",
+        "sudo_root",
+        "sudo_sidadm",
+        "hana_version",
+        "services_green",
+        "sslminprotocolversion",
+        "cert_expiry",
+        "timezone_utc",
+        "disk_usage",
+        "memory_usage",
+        "os_facts_snapshot",
+        "default_pfl_icm_ports",
+        "cvers_report"
+      ],
+      "extra_vars": {
+        "hana_validate_incrond": false,
+        "hana_validate_backint": false,
+        "hana_validate_security": true,
+        "hana_validate_os_baseline": true,
+        "hana_validate_sap_app": true,
+        "hana_validate_monitoring": false,
+        "hana_validate_cloud": false
+      },
+      "notes": "Runs fully tested automated checks only on servers whose generated component groups make them applicable."
     }
   }
 }
