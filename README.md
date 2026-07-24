@@ -1,9 +1,14 @@
 # Bulk SAP Validation
 
-This repository runs the existing read-only SAP HANA and S/4HANA validation
-checks across one server or thousands of servers.
+This repository runs a scalable, read-only automation framework that assesses the health, configuration, security, and operational readiness of SAP HANA and S/4 HANA environments.​
 
-The scalable workflow is:
+#### Core capabilities​:
+
+1. Automates key infrastructure, security, availability, backup, and configuration checks.​
+2. Supports both individual systems and large global server fleets.​
+3. Enables targeted assessments based on business environment, system type, or operational need.​
+
+The current scalable workflow is:
 
 1. Maintain server connection records in `inputs/servers.csv`.
 2. Maintain SAP component/instance records in `inputs/instances.csv`.
