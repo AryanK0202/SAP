@@ -1,0 +1,1692 @@
+NAME
+    sapcontrol (Version: 753, patch 1323, changelist 2243148) 
+
+SYNOPSIS
+    sapcontrol [-prot <protocol>]
+               [-trace <filename>]
+               [-debug]
+               [-user <user> <password>]
+               [-queryuser]
+               [-repeat <N> <D>]
+               [-format <format>]
+               [-host <hostname>]
+               [-systempki <profile>]
+               [-tio <timeout>]
+               [-tmax <timeout>]
+               -nr <instance number>
+               -function <webmethod> [parameter list]
+
+DESCRIPTION
+    Control and monitor SAP instances via WebService interface of SAP Start Service.
+
+OPTIONS
+    -prot <protocol>
+        Specify the protocol for the communication with the SAP instance.
+        Available protocols are:
+          NI_HTTP     HTTP  using SAP NI sockets (default, prefer Unix domain sockets)
+          NI_HTTPS    HTTPS using SAP NI sockets (prefer Unix domain sockets)
+          GSOAP_HTTP  HTTP  using gsoap built-in sockets
+          WINHTTP     HTTP  using Windows winhttp
+          WINHTTPS    HTTPS using Windows winhttp
+          PIPE        Windows named pipes (on Unix same as NI_HTTP)
+    -trace <filename>
+        Trace SOAP request/response
+    -debug
+        Write local trace to stderr
+    -user <user> <password>
+        OS user and password for Webservice authentication
+    -queryuser 
+        Query interactively for user and password
+    -repeat <N> <D>
+        Repeat webmethod call <N> times (-1=forever) with <D> sec delay
+    -format <format>
+        Specify the format for the output of the webmethod.
+        Available formats are:
+          list    List output format (default)
+          script  Script output format
+          custom  Webmethod specific human readable format (only available for some webmethods)
+    -host <hostname>
+        Host to connect to (default: localhost)
+    -systempki <profile>
+        Use system pki from profile configuration to connect using HTTPS
+        and authenticate with instance PSE certificate defined by profile
+    -tio <timeout>
+        Specify network I/O timeout in sec (default: 0 (blocking/infinite))
+    -tmax <timeout>
+        Specify max processing timeout in sec (default: 0 (infinite))
+WEBMETHODS
+    Start [runlevel]
+    InstanceStart <hostname> <instance number> [<runlevel>]
+    Bootstrap [<hostname> <instance number>]
+    Stop [softtimeout sec]
+    InstanceStop <hostname> <instance number> [<softtimeout sec>]
+    Shutdown
+    RestartInstance [<softtimeout sec> [<runlevel>]]
+    StopService
+    StartService <SID>
+    RestartService
+    ParameterValue [<parameter>]
+    GetStartProfile
+    GetTraceFile
+    ListConfigFiles
+    ReadConfigFile <filename>
+    GetAlertTree
+    GetAlerts
+    GetEnvironment
+    GetVersionInfo
+    GetQueueStatistic
+    GetProcessList
+    GetInstanceProperties
+    ListDeveloperTraces
+    ReadDeveloperTrace <filename> <filesize>
+    ListLogFiles
+    ReadLogFile <filename> [<filter> [<language> [<maxentries> [<cookie>]]]]
+    AnalyseLogFiles [<severity 0..2> [<maxentries>
+        [<starttime YYYY MM DD HH:MM:SS> <endtime YYYY MM DD HH:MM:SS>]]]
+    ConfigureLogFileList set|add|remove [<filename1> <filename2>... <filenameN>]
+    GetLogFileList
+    CreateSnapshot [<description> [<datcol_param> [<analyse_severity -1..2>
+        [<analyse_maxentries> [<analyse_starttime YYYY MM DD HH:MM:SS>
+        <analyse_endtime YYYY MM DD HH:MM:SS> [<maxentries>
+        [<filename1> ... <filenameN>]]]]]]]
+    ReadSnapshot <filename> [<local filename>]
+    ListSnapshots
+    DeleteSnapshots <filename1> [<filename2>... <filenameN>]
+    GetAccessPointList
+    GetProcessParameter <processtype> [pid]
+    SetProcessParameter <processtype> <pid> <parameter> <value1>
+        [<value2> ... <valueN>]
+    SetProcessParameter2 <processtype> <pid> [DYNAMIC|PERSIST|DYNAMIC_PERSIST] <parameter> <value1>
+        [<value2> ... <valueN>]
+    CheckParameter [<profile> [<default profile>]]
+    OSExecute <command> <async> <timeout> <protocolfile>
+    SendSignal <pid> <signal>
+    GetCallstack <pid>
+    GetSystemInstanceList [<timeout sec>]
+    StartSystem [ALL|SCS|DIALOG|ABAP|J2EE|TREX|ENQREP|HDB|ALLNOHDB|LEVEL <level>
+        [<waittimeout sec> [<runlevel>]]]
+    StopSystem [ALL|SCS|DIALOG|ABAP|J2EE|TREX|ENQREP|HDB|ALLNOHDB|LEVEL <level>
+        [<waittimeout sec> [<softtimeout sec>]]]
+    RestartSystem [ALL|SCS|DIALOG|ABAP|J2EE|TREX|ENQREP|HDB|ALLNOHDB|LEVEL <level>
+        [<waittimeout sec> [<softtimeout sec> [<runlevel>]]]]
+    GetSystemUpdateList 
+    UpdateSystem [<waittimeout sec> [<softtimeout sec> [<force>]]]
+    UpdateSCSInstance
+    CheckUpdateSystem
+    AccessCheck <function>
+    GetSecNetworkId <service_ip> <service_port> [<version> [<challenge>]]
+    GetNetworkId <service_ip> <service_port> [<version>]
+    RequestLogonFile <user>
+    UpdateSystemPKI [<force>]
+    UpdateInstancePSE [<force>]
+    StorePSE <server filename> <local filename> [<psemode> [<overwrite>]]
+    DeletePSE <filename>
+    CheckPSE <server filename> <local filename>
+    CreatePSECredential <server filename> <pin>
+    HACheckConfig
+    HACheckFailoverConfig
+    HAGetFailoverConfig
+    HAFailoverToNode <node>
+    HASetMaintenanceMode [<mode> [<instance_only>]]
+    HACheckMaintenanceMode [<instance_only>]
+    ABAPReadSyslog
+    ABAPReadRawSyslog
+    ABAPGetWPTable
+    ABAPGetComponentList
+    ABAPCheckRFCDestinations
+    ABAPGetSystemWPTable [<activeonly>]
+    ABAPSetServerInactive [<inactive>]
+    J2EEControlProcess <processname> <function>
+    J2EEControlCluster <processname> <function> [<hostname> <instance number>]
+    J2EEEnableDbgSession <client> [<processname> <debugflags>]
+    J2EEDisableDbgSession <debugkey>
+    J2EEGetProcessList
+    J2EEGetProcessList2
+    J2EEGetThreadList
+    J2EEGetThreadList2
+    J2EEGetThreadCallStack [<threadindex>]
+    J2EEGetThreadTaskStack [<threadindex>]
+    J2EEGetSessionList
+    J2EEGetCacheStatistic
+    J2EEGetCacheStatistic2
+    J2EEGetApplicationAliasList
+    J2EEGetComponentList
+    J2EEControlComponents <process name> <operation> <componenttype>
+        <componentname1>,...,<componentnameN>
+    J2EEGetWebSessionList
+    J2EEGetWebSessionList2
+    J2EEGetEJBSessionList
+    J2EEGetRemoteObjectList
+    J2EEGetVMGCHistory
+    J2EEGetVMGCHistory2
+    J2EEGetVMHeapInfo
+    J2EEGetClusterMsgList
+    J2EEGetSharedTableInfo
+    ICMGetThreadList
+    ICMGetConnectionList
+    ICMGetProxyConnectionList
+    ICMGetCacheEntries
+    WebDispGetServerList
+    WebDispGetGroupList
+    WebDispGetVirtHostList
+    WebDispGetUrlPrefixList
+    EnqGetStatistic
+    EnqGetLockTable
+    EnqRemoveUserLocks <user>
+    GWGetConnectionList
+    GWGetClientList
+    GWCancelConnections <connection1> ... <connectionN>
+    GWDeleteConnections <connection1> ... <connectionN>
+    GWDeleteClients <client1> ... <clientN>
+    StartWait <timeout sec> <delay sec> [<runlevel>]
+    StopWait <timeout sec> <delay sec>
+    WaitforStarted <timeout sec> <delay sec>
+    WaitforStopped <timeout sec> <delay sec>
+    RestartServiceWait <timeout sec> <delay sec>
+    WaitforServiceStarted <timeout sec> <delay sec>
+    CheckHostAgent
+    CheckSystemCertificates <verifcation pse>
+
+EXITCODES
+    0  Last webmethod call successful
+    1  Last webmethod call failed, invalid parameter
+    2  StartWait, StopWait, WaitforStarted, WaitforStopped, RestartServiceWait
+       timed out
+       CheckSystemCertificates detected warnings
+    3  GetProcessList succeeded, all processes running correctly
+       CheckSystemCertificates detected errors
+    4  GetProcessList succeeded, all processes stopped
+
+SECURITY
+    Trusted connects without user and password check are possible through
+    Unix domain socket or Windows named pipes. Protected webmethods like
+    Start or Stop require a trusted connection or OS user and password
+    authentication.
+
+EXAMPLES
+    sapcontrol -nr 0 -function GetProcessList
+      Gets the list of processes on instance 00 on localhost
+
+NOTES
+    A detailed description of the SAPControl webservice interface is available on
+    https://www.sap.com/documents/2016/09/0a40e60d-8b7c-0010-82c7-eda71af511fa.html. 
+    The actual interface definition can be queried from the SAP Start Service via
+    http://<host>:5XX13/?wsdl or https://<host>:5xx14/?wsdl. The WSDL contains a short
+    documentation of each webmethod (XML tags "<documentation>").
+    SAP MMC (https://help.sap.com/docs/SUPPORT_CONTENT/si/3362959223.html) provides a
+    graphical user interface as Snap-In for the Microsoft Management Console.
+    SAP MC provides a graphical user interface as Java Swing UI launched from a browser
+    (http://<host>:5XX13 or https://<host>:5XX14).
+
+sid-hdb-s4h:~ # ls
+aa                                    applianceprops.txt  ca.zip    monitoring.properties               .ssh
+.ansible                              .bash_history       .gnupg    S4H_validation_20260717_175623.log  .wget-hsts
+appliance.properties                  bin                 .hdb      .sapinst
+appliance.properties_20260715-160826  .cache              .lesshst  .sdb
+sid-hdb-s4h:~ # ls /usr
+bin  include  lib  lib64  libexec  local  sap  sbin  share  src  x86_64-suse-linux
+sid-hdb-s4h:~ # ls usr/sap
+ls: cannot access 'usr/sap': No such file or directory
+sid-hdb-s4h:~ # ls /usr/sap
+ccms  HDB  hostctrl  S4H  sapservices  sapservices_202607_15_16.17.31  tmp  trans
+sid-hdb-s4h:~ # ls /usr/sap/HDB
+HDB02  hdblcm_uploads  home  SYS
+sid-hdb-s4h:~ # ls /usr/sap/HDB/home
+.ansible       bin      .cshrc  .hdb      .inputrc  .profile     .sapenv.sh   .xim.template
+.bash_history  .cache   .emacs  .history  .lesshst  public_html  .sapsrc.csh  .xinitrc.template
+.bashrc        .config  .fonts  .i18n     .local    .sapenv.csh  .sapsrc.sh
+sid-hdb-s4h:~ # ls /usr/sap/HDB/home/.hdb
+sid-hdb-s4h
+sid-hdb-s4h:~ # ls /usr/sap/HDB/home/.hdb/sid-hdb-s4h/
+SQLDBC.loc  SQLDBC.shm  SSFS_HDB.DAT  SSFS_HDB.KEY  SSFS_HDB.LOC
+
+sid-hdb-s4h:~ # bash <<'EOF'
+> WARN=85
+> CRIT=95
+> 
+> mounts=(
+>   "/"
+>   "/hana/shared/HDB"
+>   "/hana/data/HDB"
+>   "/hana/log/HDB"
+>   "/usr/sap/S4H"
+>   "/sapmnt/S4H"
+> )
+> 
+> status() {
+>   local value="$1"
+> 
+>   if [ "$value" -ge "$CRIT" ]; then
+>     printf 'FAIL'
+>   elif [ "$value" -ge "$WARN" ]; then
+>     printf 'WARN'
+>   else
+>     printf 'PASS'
+>   fi
+> }
+> 
+> printf '%-22s %-42s %-5s %8s %9s %-6s %10s %-6s\n' \
+>   "MOUNT" "SOURCE" "TYPE" "USE" "FREE" "SPACE" "INODE USE" "INODE"
+> 
+> for mp in "${mounts[@]}"; do
+>   if ! findmnt -rn -T "$mp" >/dev/null 2>&1; then
+>     printf '%-22s %-42s\n' "$mp" "MISSING"
+>     continue
+>   fi
+> 
+>   source=$(findmnt -rn -T "$mp" -o SOURCE | head -n 1)
+>   fstype=$(findmnt -rn -T "$mp" -o FSTYPE | head -n 1)
+> 
+>   read -r size used avail usep < <(
+>     df -hP "$mp" | awk 'NR==2 {print $2, $3, $4, $5}'
+>   )
+> 
+>   read -r iused ifree iusep < <(
+>     df -Pi "$mp" | awk 'NR==2 {print $3, $4, $5}'
+>   )
+> 
+>   space_pct=${usep%\%}
+>   inode_pct=${iusep%\%}
+> 
+>   printf '%-22s %-42s %-5s %8s %9s %-6s %10s %-6s\n' \
+>     "$mp" \
+>     "$source" \
+>     "$fstype" \
+>     "$usep" \
+>     "$avail" \
+>     "$(status "$space_pct")" \
+>     "$iusep" \
+>     "$(status "$inode_pct")"
+> done
+> EOF
+MOUNT                  SOURCE                                     TYPE       USE      FREE SPACE   INODE USE INODE 
+/                      /dev/nvme0n1p3                             xfs        41%      5.9G PASS           2% PASS  
+/hana/shared/HDB       /dev/mapper/vgcal-sysfiles[/hana/shared/HDB] xfs        56%       24G PASS           1% PASS  
+/hana/data/HDB         /dev/mapper/vgcal-dbdata[/hana/data/HDB]   xfs        90%       44G WARN           1% PASS  
+/hana/log/HDB          /dev/mapper/vgcal-dblog[/hana/log/HDB]     xfs        76%       31G PASS           1% PASS  
+/usr/sap/S4H           /dev/mapper/vgcal-sysfiles[/usr/sap/S4H]   xfs        56%       24G PASS           1% PASS  
+/sapmnt/S4H            /dev/mapper/vgcal-sysfiles[/sapmnt/S4H]    xfs        56%       24G PASS           1% PASS  
+sid-hdb-s4h:~ # df -hPT / /vol/vol_S4H/sysfiles /vol/vol_S4H/data /vol/vol_S4H/log
+Filesystem                 Type  Size  Used Avail Use% Mounted on
+/dev/nvme0n1p3             xfs    10G  4.1G  5.9G  41% /
+/dev/mapper/vgcal-sysfiles xfs    53G   30G   24G  56% /vol/vol_S4H/sysfiles
+/dev/mapper/vgcal-dbdata   xfs   418G  375G   44G  90% /vol/vol_S4H/data
+/dev/mapper/vgcal-dblog    xfs   122G   92G   31G  76% /vol/vol_S4H/log
+sid-hdb-s4h:~ # df -iPT / /vol/vol_S4H/sysfiles /vol/vol_S4H/data /vol/vol_S4H/log
+Filesystem                 Type   Inodes IUsed    IFree IUse% Mounted on
+/dev/nvme0n1p3             xfs   5231040 87165  5143875    2% /
+/dev/mapper/vgcal-sysfiles xfs  27795456 58857 27736599    1% /vol/vol_S4H/sysfiles
+/dev/mapper/vgcal-dbdata   xfs  91818224    33 91818191    1% /vol/vol_S4H/data
+/dev/mapper/vgcal-dblog    xfs  63499960   166 63499794    1% /vol/vol_S4H/log
+sid-hdb-s4h:~ # for mp in / /hana/shared/HDB /hana/data/HDB /hana/log/HDB /usr/sap/S4H /sapmnt/S4H; do p=$(df -P "$mp" | awk 'NR==2 {gsub(/%/,"",$5); print $5}'); [ "$p" -ge 85 ] && printf '%-22s %3s%% %s\n' "$mp" "$p" "$([ "$p" -ge 95 ] && echo FAIL || echo WARN)"; done
+/hana/data/HDB          90% WARN
+sid-hdb-s4h:~ # for mp in / /hana/shared/HDB /hana/data/HDB /hana/log/HDB /usr/sap/S4H /sapmnt/S4H; do p=$(df -Pi "$mp" | awk 'NR==2 {gsub(/%/,"",$5); print $5}'); [ "$p" -ge 85 ] && printf '%-22s %3s%% %s\n' "$mp" "$p" "$([ "$p" -ge 95 ] && echo FAIL || echo WARN)"; done
+sid-hdb-s4h:~ # du -xhd1 /hana/data/HDB 2>/dev/null | sort -h
+0	/hana/data/HDB/DB_HDB
+374G	/hana/data/HDB
+374G	/hana/data/HDB/mnt00001
+
+
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT CURRENT_DATABASE() || '|' || SESSION_USER FROM DUMMY\""
+"SYSTEMDB|CAL_USER"
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT DATABASE_NAME || '|' || ACTIVE_STATUS FROM SYS.M_DATABASES ORDER BY DATABASE_NAME\""
+"SYSTEMDB|YES"
+sid-hdb-s4h:~ # found=0; for key in $(su - hdbadm -c 'hdbuserstore list' | awk '/^KEY /{print $2}'); do out=$(su - hdbadm -c "hdbsql -U '$key' -x -a -j \"SELECT CURRENT_DATABASE() || '|' || SESSION_USER FROM DUMMY\"" 2>/dev/null); rc=$?; row=$(printf '%s\n' "$out" | awk 'NF {gsub(/^[[:space:]"]+|[[:space:]"]+$/, ""); print; exit}'); if [ "$rc" -eq 0 ] && [ "${row%%|*}" = "SYSTEMDB" ]; then echo "PASS: SYSTEMDB connectivity; key=$key; user=${row#*|}"; found=1; fi; done; [ "$found" -eq 1 ] || { echo "FAIL: no user-store key could connect to SYSTEMDB"; exit 1; }
+PASS: SYSTEMDB connectivity; key=HDB_KEY_CAL; user=CAL_USER
+sid-hdb-s4h:~ # for pid in $(pgrep -x hdbdaemon); do ps -o user= -p "$pid"; done | awk 'NF {print $1}' | sort -u
+sid-hdb-s4h:~ # ps -eo user,pid,comm,args | grep -E '[h]db(daemon|nameserver|indexserver|compileserver|preprocessor)'
+hdbadm   25707 hdbnameserver   hdbnameserver
+hdbadm   26025 hdbcompileserve hdbcompileserver
+hdbadm   26028 hdbpreprocessor hdbpreprocessor
+hdbadm   26075 hdbindexserver  hdbindexserver -port 30203
+sid-hdb-s4h:~ # ps -eo user=,args= | awk '$0 ~ /(^|[[:space:]\/])hdb(nameserver|indexserver|compileserver|preprocessor|daemon)([[:space:]]|$)/ {print $1}' | sort -u
+hdbadm
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,args= | awk '$0 ~ /(^|[[:space:]\/])hdb(nameserver|indexserver|compileserver|preprocessor|daemon)([[:space:]]|$)/ {print $1}' | sort -u | head -n1); [ -n "$HANA_ADM" ] || { echo "FAIL: no running HANA administrator found"; exit 1; }; found=0; for key in $(su - "$HANA_ADM" -c 'hdbuserstore list' | awk '/^KEY / {print $2}'); do out=$(su - "$HANA_ADM" -c "hdbsql -U '$key' -x -a -j \"SELECT CURRENT_DATABASE() || '|' || SESSION_USER FROM DUMMY\"" 2>&1); rc=$?; row=$(printf '%s\n' "$out" | awk 'NF {gsub(/^[[:space:]"]+|[[:space:]"]+$/, ""); print; exit}'); if [ "$rc" -eq 0 ] && [ "${row%%|*}" = "SYSTEMDB" ]; then printf 'PASS: os_user=%s key=%s database=SYSTEMDB sql_user=%s\n' "$HANA_ADM" "$key" "${row#*|}"; found=1; fi; done; [ "$found" -eq 1 ] || { echo "FAIL: no user-store key connected to SYSTEMDB"; exit 1; }
+PASS: os_user=hdbadm key=HDB_KEY_CAL database=SYSTEMDB sql_user=CAL_USER
+
+sid-hdb-s4h:~ # getent passwd hdbadm s4hadm | awk -F: '{printf "user=%s home=%s shell=%s\n",$1,$6,$7}'
+user=hdbadm home=/usr/sap/HDB/home shell=/bin/csh
+user=s4hadm home=/home/s4hadm shell=/bin/csh
+sid-hdb-s4h:~ # su - hdbadm -c 'which hdbsql; which hdbuserstore'
+/usr/sap/HDB/HDB02/exe/hdbsql
+/usr/sap/HDB/HDB02/exe/hdbuserstore
+sid-hdb-s4h:~ # su - hdbadm -c 'hdbuserstore list'
+DATA FILE       : /usr/sap/HDB/home/.hdb/sid-hdb-s4h/SSFS_HDB.DAT
+KEY FILE        : /usr/sap/HDB/home/.hdb/sid-hdb-s4h/SSFS_HDB.KEY
+KEY HDB_KEY_CAL
+  ENV : vhcalhdbdb:30213
+  USER: CAL_USER
+
+ACTIVE RECORDS  : 4
+DELETED RECORDS : 0
+NUMBER OF COMPLETE KEY: 1
+
+Operation succeed.
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,comm= | awk '$2 ~ /^hdb(daemon|nameserver|indexserver|compileserver|preprocessor)$/ {print $1}' | sort -u | head -n1); [ -n "$HANA_ADM" ] || { echo "FAIL: HANA administrator not found"; exit 1; }; for key in $(su - "$HANA_ADM" -c 'hdbuserstore list' | awk '$1=="KEY" && NF==2 {print $2}'); do out=$(su - "$HANA_ADM" -c "hdbsql -U '$key' -x -a -j \"SELECT CURRENT_DATABASE() || '|' || SESSION_USER FROM DUMMY\"" 2>&1); rc=$?; row=$(printf '%s\n' "$out" | awk 'NF {gsub(/^[[:space:]"]+|[[:space:]"]+$/, ""); print; exit}'); if [ "$rc" -eq 0 ]; then printf 'PASS: os_user=%s key=%s database=%s sql_user=%s\n' "$HANA_ADM" "$key" "${row%%|*}" "${row#*|}"; else printf 'FAIL: os_user=%s key=%s rc=%s error=%s\n' "$HANA_ADM" "$key" "$rc" "$row"; fi; done
+PASS: os_user=hdbadm key=HDB_KEY_CAL database=SYSTEMDB sql_user=CAL_USER
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,comm= | awk '$2 ~ /^hdb(daemon|nameserver|indexserver|compileserver|preprocessor)$/ {print $1}' | sort -u | head -n1); TENANT=$(grep -RhsEi '^[[:space:]]*dbs/hdb/dbname[[:space:]]*=' /usr/sap/*/SYS/profile 2>/dev/null | awk -F= '{gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2); print toupper($2)}' | sort -u | head -n1); [ -n "$HANA_ADM" ] || { echo "FAIL: HANA administrator not found"; exit 1; }; [ -n "$TENANT" ] || { echo "FAIL: expected tenant not found"; exit 1; }; found=0; for key in $(su - "$HANA_ADM" -c 'hdbuserstore list' | awk '$1=="KEY" && NF==2 {print $2}'); do out=$(su - "$HANA_ADM" -c "hdbsql -U '$key' -d '$TENANT' -x -a -j \"SELECT CURRENT_DATABASE() || '|' || SESSION_USER FROM DUMMY\"" 2>&1); rc=$?; row=$(printf '%s\n' "$out" | awk 'NF {gsub(/^[[:space:]"]+|[[:space:]"]+$/, ""); print; exit}'); db=${row%%|*}; user=${row#*|}; if [ "$rc" -eq 0 ] && [ "$(printf '%s' "$db" | tr '[:lower:]' '[:upper:]')" = "$TENANT" ]; then printf 'PASS: tenant=%s os_user=%s key=%s sql_user=%s\n' "$db" "$HANA_ADM" "$key" "$user"; found=1; else printf 'FAILED ATTEMPT: tenant=%s key=%s rc=%s result=%s\n' "$TENANT" "$key" "$rc" "$row"; fi; done; [ "$found" -eq 1 ] || { echo "NOT VALIDATED: no existing key successfully connected directly to tenant $TENANT"; exit 1; }
+FAILED ATTEMPT: tenant=HDB key=HDB_KEY_CAL rc=3 result=* 10: authentication failed SQLSTATE: 28000
+NOT VALIDATED: no existing key successfully connected directly to tenant HDB
+logout
+Connection to 54.84.120.187 closed.
+
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,comm= | awk '$2 ~ /^hdb(nameserver|indexserver|compileserver|preprocessor)$/ {print $1}' | sort -u | head -n1); HDBSQL=$(su - "$HANA_ADM" -c 'which hdbsql' | tail -n1); NR=$(printf '%s\n' "$HDBSQL" | sed -n 's#^.*/HDB\([0-9][0-9]\)/exe/hdbsql$#\1#p'); printf 'HANA administrator=%s\nhdbsql=%s\ninstance=%s\n' "$HANA_ADM" "$HDBSQL" "$NR"; if [ -n "$NR" ]; then /usr/sap/hostctrl/exe/sapcontrol -nr "$NR" -function GetProcessList; else echo "ERROR: could not determine HANA instance number"; fi
+HANA administrator=hdbadm
+hdbsql=/usr/sap/HDB/HDB02/exe/hdbsql
+instance=02
+
+03.08.2026 19:45:21
+GetProcessList
+OK
+name, description, dispstatus, textstatus, starttime, elapsedtime, pid
+hdbdaemon, HDB Daemon, GREEN, Running, 2026 07 15 16:17:37, 459:27:44, 25681
+hdbcompileserver, HDB Compileserver, GREEN, Running, 2026 07 15 16:18:15, 459:27:06, 26025
+hdbdiserver, HDB Deployment Infrastructure Server-HDB, GREEN, Running, 2026 07 15 16:20:34, 459:24:47, 27178
+hdbdocstore, HDB DocStore-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:05, 26069
+hdbdpserver, HDB DPserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:05, 26072
+hdbindexserver, HDB Indexserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:05, 26075
+hdbnameserver, HDB Nameserver, GREEN, Running, 2026 07 15 16:17:39, 459:27:42, 25707
+hdbpreprocessor, HDB Preprocessor, GREEN, Running, 2026 07 15 16:18:15, 459:27:06, 26028
+hdbscriptserver, HDB Scriptserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:05, 26078
+hdbwebdispatcher, HDB Web Dispatcher, GREEN, Running, 2026 07 15 16:20:34, 459:24:47, 27181
+hdbxsengine, HDB XSEngine-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:05, 26081
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,comm= | awk '$2 ~ /^hdb(nameserver|indexserver|compileserver|preprocessor)$/ {print $1}' | sort -u | head -n1); HDBSQL=$(su - "$HANA_ADM" -c 'which hdbsql' | tail -n1); NR=$(printf '%s\n' "$HDBSQL" | sed -n 's#^.*/HDB\([0-9][0-9]\)/exe/hdbsql$#\1#p'); if [ -z "$NR" ]; then echo "ERROR: HANA instance number not found"; else out=$(/usr/sap/hostctrl/exe/sapcontrol -nr "$NR" -function GetProcessList 2>&1); rc=$?; printf '%s\n' "$out"; case "$rc" in 0|3) echo "PASS: HANA instance $NR processes are available/running";; 4) echo "FAIL: HANA instance $NR processes are stopped";; *) echo "ERROR: sapcontrol returned rc=$rc";; esac; fi
+
+03.08.2026 19:45:47
+GetProcessList
+OK
+name, description, dispstatus, textstatus, starttime, elapsedtime, pid
+hdbdaemon, HDB Daemon, GREEN, Running, 2026 07 15 16:17:37, 459:28:10, 25681
+hdbcompileserver, HDB Compileserver, GREEN, Running, 2026 07 15 16:18:15, 459:27:32, 26025
+hdbdiserver, HDB Deployment Infrastructure Server-HDB, GREEN, Running, 2026 07 15 16:20:34, 459:25:13, 27178
+hdbdocstore, HDB DocStore-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:31, 26069
+hdbdpserver, HDB DPserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:31, 26072
+hdbindexserver, HDB Indexserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:31, 26075
+hdbnameserver, HDB Nameserver, GREEN, Running, 2026 07 15 16:17:39, 459:28:08, 25707
+hdbpreprocessor, HDB Preprocessor, GREEN, Running, 2026 07 15 16:18:15, 459:27:32, 26028
+hdbscriptserver, HDB Scriptserver-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:31, 26078
+hdbwebdispatcher, HDB Web Dispatcher, GREEN, Running, 2026 07 15 16:20:34, 459:25:13, 27181
+hdbxsengine, HDB XSEngine-HDB, GREEN, Running, 2026 07 15 16:18:16, 459:27:31, 26081
+PASS: HANA instance 02 processes are available/running
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT DATABASE_NAME || '|' || ACTIVE_STATUS FROM SYS.M_DATABASES ORDER BY DATABASE_NAME\""
+"SYSTEMDB|YES"
+
+sid-hdb-s4h:~ # HANA_ADM=$(ps -eo user=,comm= | awk '$2 ~ /^hdb(daemon|nameserver|indexserver|compileserver|preprocessor)$/ {print $1}' | sort -u | head -n1); SYSTEMDB_KEY=$(for key in $(su - "$HANA_ADM" -c 'hdbuserstore list' | awk '$1=="KEY" && NF==2 {print $2}'); do db=$(su - "$HANA_ADM" -c "hdbsql -U '$key' -x -a -j \"SELECT CURRENT_DATABASE() FROM DUMMY\"" 2>/dev/null | tr -d '"' | awk 'NF {print; exit}'); [ "$db" = "SYSTEMDB" ] && { echo "$key"; break; }; done); printf 'HANA_ADM=%s\nSYSTEMDB_KEY=%s\n' "$HANA_ADM" "$SYSTEMDB_KEY"
+HANA_ADM=hdbadm
+SYSTEMDB_KEY=HDB_KEY_CAL
+sid-hdb-s4h:~ # journalctl -k --since "24 hours ago" --no-pager | grep -Ei 'out of memory|oom-kill|killed process|memory cgroup out of memory' || echo "PASS: no Linux OOM events found in the last 24 hours"
+PASS: no Linux OOM events found in the last 24 hours
+sid-hdb-s4h:~ # journalctl -k --since "7 days ago" --no-pager | grep -Ei 'out of memory|oom-kill|killed process|memory cgroup out of memory' || echo "PASS: no Linux OOM events found in the last 7 days"
+PASS: no Linux OOM events found in the last 7 days
+sid-hdb-s4h:~ # dmesg -T | grep -Ei 'out of memory|oom-kill|killed process' || echo "PASS: no OOM events found in the current kernel log"
+PASS: no OOM events found in the current kernel log
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST, PORT, TIME, EVENT_REASON, ROUND(MEMORY_REQUEST_SIZE/1024/1024,2) AS REQUEST_MB, ROUND(MEMORY_USED_SIZE/1024/1024/1024,2) AS USED_GB, ROUND(MEMORY_LIMIT_SIZE/1024/1024/1024,2) AS LIMIT_GB, HEAP_MEMORY_CATEGORY, TRACEFILE_NAME FROM SYS.M_OUT_OF_MEMORY_EVENTS WHERE TIME >= ADD_DAYS(CURRENT_TIMESTAMP,-7) ORDER BY TIME DESC\""
+sid-hdb-s4h:~ # find /usr/sap/HDB/HDB02 -type f -path '*/trace/*' -mtime -7 \( -iname '*oom*' -o -iname '*out*memory*' \) -printf '%TY-%Tm-%Td %TH:%TM %s %p\n' 2>/dev/null | sort -r
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST, ROUND(INSTANCE_TOTAL_MEMORY_USED_SIZE/1024/1024/1024,2) AS USED_GB, ROUND(INSTANCE_TOTAL_MEMORY_ALLOCATED_SIZE/1024/1024/1024,2) AS ALLOCATED_GB, ROUND(ALLOCATION_LIMIT/1024/1024/1024,2) AS LIMIT_GB, ROUND(100*INSTANCE_TOTAL_MEMORY_USED_SIZE/NULLIF(ALLOCATION_LIMIT,0),1) AS USED_PCT, CASE WHEN INSTANCE_TOTAL_MEMORY_USED_SIZE < ALLOCATION_LIMIT THEN 'PASS' ELSE 'FAIL' END AS STATUS FROM SYS.M_HOST_RESOURCE_UTILIZATION ORDER BY HOST\""
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST || '|used=' || ROUND(INSTANCE_TOTAL_MEMORY_USED_SIZE/1024/1024/1024,2) || 'GB|limit=' || ROUND(ALLOCATION_LIMIT/1024/1024/1024,2) || 'GB|usage=' || ROUND(100*INSTANCE_TOTAL_MEMORY_USED_SIZE/NULLIF(ALLOCATION_LIMIT,0),1) || '%|' || CASE WHEN INSTANCE_TOTAL_MEMORY_USED_SIZE < ALLOCATION_LIMIT THEN 'PASS' ELSE 'FAIL' END FROM SYS.M_HOST_RESOURCE_UTILIZATION\""
+sid-hdb-s4h:~ # free -h
+               total        used        free      shared  buff/cache   available
+Mem:           247Gi        76Gi       169Gi        10Gi        14Gi       171Gi
+Swap:           23Gi          0B        23Gi
+sid-hdb-s4h:~ # swapon --show --bytes
+NAME         TYPE             SIZE USED PRIO
+/dev/nvme0n1 partition 25769799680    0   -2
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST, ROUND(USED_SWAP_SPACE/1024/1024,2) AS USED_SWAP_MB, ROUND(FREE_SWAP_SPACE/1024/1024,2) AS FREE_SWAP_MB, CASE WHEN USED_SWAP_SPACE=0 THEN 'PASS' ELSE 'WARN' END AS STATUS FROM SYS.M_HOST_RESOURCE_UTILIZATION ORDER BY HOST\""
+sid-hdb-s4h:~ # vmstat 1 10
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 0  0      0 177278624   2160 15170768    0    0  5763    44  303  365  4  1 95  0  0
+ 0  0      0 177278624   2160 15170768    0    0     0     0 4207 6947  0  0 100  0  0
+ 0  0      0 177278372   2160 15170812    0    0   128     0 4385 7216  0  0 100  0  0
+10  0      0 177276860   2160 15170832    0    0    64   380 6969 11701  1  0 98  0  0
+ 0  0      0 177269048   2160 15170936    0    0     0   452 8120 13601  2  0 98  0  0
+ 0  0      0 177268796   2160 15171112    0    0     0   148 4497 7395  0  0 100  0  0
+ 0  0      0 177268796   2160 15171112    0    0     0     0 4275 7511  0  0 100  0  0
+ 0  0      0 177268544   2160 15171112    0    0     0     0 4280 7258  0  0 100  0  0
+ 0  0      0 177268544   2160 15171112    0    0     0   114 4094 6885  0  0 100  0  0
+ 0  0      0 177268544   2160 15171112    0    0     0     0 3976 6815  0  0 100  0  0
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST, PORT, SERVICE_NAME, ACTIVE_STATUS, ROUND(PROCESS_PHYSICAL_MEMORY/1024/1024/1024,2) AS PHYSICAL_GB, ROUND(PROCESS_MEMORY/1024/1024/1024,2) AS LOGICAL_GB, ROUND(100*PROCESS_PHYSICAL_MEMORY/NULLIF(SUM(PROCESS_PHYSICAL_MEMORY) OVER (),0),1) AS PCT_OF_HANA_PHYSICAL FROM SYS.M_SERVICE_STATISTICS ORDER BY PROCESS_PHYSICAL_MEMORY DESC\""
+sid-hdb-s4h:~ # ps -eo user,pid,comm,rss,vsz,%mem --sort=-rss | awk 'NR==1 || ($1=="hdbadm" && $3 ~ /^hdb/) {if(NR==1){print}else{printf "%-10s %-8s %-24s RSS=%8.2fGB VSZ=%8.2fGB MEM=%s%%\n",$1,$2,$3,$4/1048576,$5/1048576,$6}}'
+USER       PID COMMAND           RSS    VSZ %MEM
+hdbadm     4841     hdbindexserver           RSS=   58.44GB VSZ=   63.19GB MEM=23.5%
+hdbadm     4584     hdbnameserver            RSS=    3.96GB VSZ=    9.50GB MEM=1.5%
+hdbadm     4835     hdbdocstore              RSS=    2.68GB VSZ=    8.40GB MEM=1.0%
+hdbadm     4847     hdbxsengine              RSS=    1.44GB VSZ=    7.46GB MEM=0.5%
+hdbadm     4838     hdbdpserver              RSS=    1.27GB VSZ=    7.32GB MEM=0.5%
+hdbadm     4844     hdbscriptserver          RSS=    1.19GB VSZ=    5.42GB MEM=0.4%
+hdbadm     6332     hdbwebdispatche          RSS=    0.44GB VSZ=    5.52GB MEM=0.1%
+hdbadm     6329     hdbdiserver              RSS=    0.38GB VSZ=    5.26GB MEM=0.1%
+hdbadm     4792     hdbcompileserve          RSS=    0.32GB VSZ=    4.44GB MEM=0.1%
+hdbadm     4795     hdbpreprocessor          RSS=    0.22GB VSZ=    4.15GB MEM=0.0%
+hdbadm     4559     hdb.sapHDB_HDB0          RSS=    0.10GB VSZ=    0.46GB MEM=0.0%
+hdbadm     5395     hdbrsutil                RSS=    0.04GB VSZ=    6.18GB MEM=0.0%
+hdbadm     4732     hdbrsutil                RSS=    0.04GB VSZ=    0.68GB MEM=0.0%
+sid-hdb-s4h:~ # if [ -x /usr/bin/mpstat ]; then LC_ALL=C /usr/bin/mpstat -P ALL 1 10; else echo "mpstat unavailable; using vmstat"; LC_ALL=C vmstat 1 10; fi
+Linux 6.4.0-150700.53.19-default (sid-hdb-s4h) 	08/03/26 	_x86_64_	(32 CPU)
+
+20:09:30     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:31     all    0.09    0.00    0.06    0.00    0.00    0.00    0.00    0.00    0.00   99.84
+20:09:31       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       4    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:31       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      12    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:31      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      20    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:31      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      26    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:31      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:31      30    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:31      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:31     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:32     all    0.28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.72
+20:09:32       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       2    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:32       3    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:32       4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32       9    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:32      10    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:32      11    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:32      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      18    1.98    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:32      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      26    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:32      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:32      30    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:32      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:32     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:33     all    0.12    0.00    0.06    0.00    0.00    0.00    0.00    0.00    0.00   99.81
+20:09:33       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       2    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:33       3    0.00    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:33       4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33       9    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:33      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      12    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:33      13    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:33      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      26    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:33      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:33      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:33     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:34     all    0.13    0.00    0.03    0.00    0.00    0.00    0.00    0.00    0.00   99.84
+20:09:34       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       6    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:34       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      13    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:34      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      16    0.98    0.00    0.98    0.00    0.00    0.00    0.00    0.00    0.00   98.04
+20:09:34      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      25    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:34      26    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:34      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:34     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:35     all    1.28    0.00    0.60    0.03    0.00    0.00    0.00    0.00    0.00   98.09
+20:09:35       0    4.95    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   95.05
+20:09:35       1    1.01    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:35       2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35       4    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:35       5    4.08    0.00    1.02    0.00    0.00    0.00    0.00    0.00    0.00   94.90
+20:09:35       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35       7    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:35       8    5.00    0.00    3.00    0.00    0.00    0.00    0.00    0.00    0.00   92.00
+20:09:35       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35      10    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:35      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35      12    1.01    0.00    1.01    0.00    0.00    0.00    0.00    0.00    0.00   97.98
+20:09:35      13    0.00    0.00    1.01    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:35      14    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:35      15    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:35      16    1.01    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:35      17    0.00    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:35      18    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:35      19    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:35      20    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:35      21    4.04    0.00    1.01    1.01    0.00    0.00    0.00    0.00    0.00   93.94
+20:09:35      22    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:35      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35      25    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:35      26    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:35      27    6.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   94.00
+20:09:35      28    2.97    0.00    1.98    0.00    0.00    0.00    0.00    0.00    0.00   95.05
+20:09:35      29    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:35      30    3.00    0.00    2.00    0.00    0.00    0.00    0.00    0.00    0.00   95.00
+20:09:35      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:35     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:36     all    1.81    0.00    0.87    0.44    0.00    0.00    0.03    0.00    0.00   96.85
+20:09:36       0    4.90    0.00    1.96    1.96    0.00    0.00    0.98    0.00    0.00   90.20
+20:09:36       1    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:36       2    1.01    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:36       3    0.00    0.00    1.01    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:36       4    1.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   98.00
+20:09:36       5    0.99    0.00    1.98    0.00    0.00    0.00    0.00    0.00    0.00   97.03
+20:09:36       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36       7    5.00    0.00    2.00    6.00    0.00    0.00    0.00    0.00    0.00   87.00
+20:09:36       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36       9    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:36      10    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:36      11    0.00    0.00    1.98    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:36      12    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:36      13    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:36      14    1.01    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:36      15    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:36      16    0.99    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:36      17   11.11    0.00    1.01    0.00    0.00    0.00    0.00    0.00    0.00   87.88
+20:09:36      18    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:36      19    8.08    0.00    1.01    3.03    0.00    0.00    0.00    0.00    0.00   87.88
+20:09:36      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36      21    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:36      22    1.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   98.00
+20:09:36      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36      24    1.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   98.00
+20:09:36      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36      26    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:36      27    5.94    0.00    1.98    2.97    0.00    0.00    0.00    0.00    0.00   89.11
+20:09:36      28    0.00    0.00    1.01    0.00    0.00    0.00    0.00    0.00    0.00   98.99
+20:09:36      29    6.93    0.00    5.94    0.00    0.00    0.00    0.00    0.00    0.00   87.13
+20:09:36      30    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:36      31    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+
+20:09:36     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:37     all    1.38    0.00    0.44    0.22    0.00    0.00    0.00    0.00    0.00   97.97
+20:09:37       0   17.65    0.00    8.82    1.96    0.00    0.00    0.00    0.00    0.00   71.57
+20:09:37       1    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37       2    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37       4    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37       8   19.80    0.00    3.96    0.99    0.00    0.00    0.00    0.00    0.00   75.25
+20:09:37       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      15    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37      16    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:37      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      20    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37      21    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:37      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      26    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      27    0.00    0.00    0.00    4.04    0.00    0.00    0.00    0.00    0.00   95.96
+20:09:37      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:37      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:37     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:38     all    0.22    0.00    0.13    0.00    0.00    0.00    0.00    0.00    0.00   99.66
+20:09:38       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       1    3.03    0.00    2.02    0.00    0.00    0.00    0.00    0.00    0.00   94.95
+20:09:38       2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      18    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:38      19    0.00    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:38      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      24    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:38      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      26    1.98    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   98.02
+20:09:38      27    0.00    0.00    0.99    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:38      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:38      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:38     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:39     all    0.06    0.00    0.03    0.00    0.00    0.00    0.00    0.00    0.00   99.91
+20:09:39       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       2    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       3    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:39       4    0.00    0.00    1.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:39       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      22    0.99    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.01
+20:09:39      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      25    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      26    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:39      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+20:09:39     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+20:09:40     all    0.13    0.00    0.03    0.00    0.00    0.00    0.00    0.00    0.00   99.84
+20:09:40       0    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       1    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       2    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:40       3    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       4    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       5    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       6    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       7    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       8    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40       9    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      10    0.98    0.00    0.98    0.00    0.00    0.00    0.00    0.00    0.00   98.04
+20:09:40      11    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      12    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      13    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      14    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      15    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      16    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      17    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      18    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      19    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      20    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      21    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      22    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      24    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      25    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:40      26    1.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.00
+20:09:40      27    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      28    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      29    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      30    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+20:09:40      31    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+
+Average:     CPU    %usr   %nice    %sys %iowait    %irq   %soft  %steal  %guest  %gnice   %idle
+Average:     all    0.55    0.00    0.23    0.07    0.00    0.00    0.00    0.00    0.00   99.15
+Average:       0    2.79    0.00    1.10    0.40    0.00    0.00    0.10    0.00    0.00   95.61
+Average:       1    0.50    0.00    0.40    0.00    0.00    0.00    0.00    0.00    0.00   99.10
+Average:       2    0.40    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.50
+Average:       3    0.20    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.60
+Average:       4    0.40    0.00    0.30    0.00    0.00    0.00    0.00    0.00    0.00   99.30
+Average:       5    0.50    0.00    0.30    0.00    0.00    0.00    0.00    0.00    0.00   99.20
+Average:       6    0.10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.90
+Average:       7    0.60    0.00    0.20    0.60    0.00    0.00    0.00    0.00    0.00   98.60
+Average:       8    2.50    0.00    0.70    0.10    0.00    0.00    0.00    0.00    0.00   96.70
+Average:       9    0.30    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.60
+Average:      10    0.40    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.40
+Average:      11    0.10    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.70
+Average:      12    0.40    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.40
+Average:      13    0.30    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.60
+Average:      14    0.20    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.70
+Average:      15    0.20    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.60
+Average:      16    0.40    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.40
+Average:      17    1.10    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   98.70
+Average:      18    0.50    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.50
+Average:      19    0.90    0.00    0.20    0.30    0.00    0.00    0.00    0.00    0.00   98.60
+Average:      20    0.20    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.70
+Average:      21    0.60    0.00    0.10    0.10    0.00    0.00    0.00    0.00    0.00   99.20
+Average:      22    0.20    0.00    0.20    0.00    0.00    0.00    0.00    0.00    0.00   99.60
+Average:      23    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00  100.00
+Average:      24    0.20    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.70
+Average:      25    0.20    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.70
+Average:      26    0.50    0.00    0.10    0.00    0.00    0.00    0.00    0.00    0.00   99.40
+Average:      27    1.20    0.00    0.30    0.70    0.00    0.00    0.00    0.00    0.00   97.80
+Average:      28    0.30    0.00    0.30    0.00    0.00    0.00    0.00    0.00    0.00   99.40
+Average:      29    0.80    0.00    0.60    0.00    0.00    0.00    0.00    0.00    0.00   98.60
+Average:      30    0.50    0.00    0.30    0.00    0.00    0.00    0.00    0.00    0.00   99.20
+Average:      31    0.10    0.00    0.00    0.00    0.00    0.00    0.00    0.00    0.00   99.90
+sid-hdb-s4h:~ # uptime; echo; nproc; echo; top -b -n 2 -d 1 | tail -n +1 | grep -E '^(top -|%Cpu|Tasks:|MiB Mem|MiB Swap)' | tail -n 6
+ 20:09:54  up   0:05,  2 users,  load average: 1.07, 1.30, 0.59
+
+32
+
+MiB Swap: 24575.99+total, 24575.99+free,    0.000 used. 175328.7+avail Mem 
+top - 20:09:55 up 5 min,  2 users,  load average: 1.07, 1.30, 0.59
+Tasks: 461 total,   1 running, 459 sleeping,   1 stopped,   0 zombie
+%Cpu(s):  0.2 us,  0.1 sy,  0.0 ni, 99.8 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem : 253665.9+total, 172958.7+free, 78337.22+used, 14900.28+buff/cache
+MiB Swap: 24575.99+total, 24575.99+free,    0.000 used. 175328.7+avail Mem 
+sid-hdb-s4h:~ # su - "$HANA_ADM" -c "hdbsql -U '$SYSTEMDB_KEY' -x -a -j \"SELECT HOST, PORT, SERVICE_NAME, ACTIVE_STATUS, PROCESS_CPU, TOTAL_CPU, PROCESS_ID FROM SYS.M_SERVICE_STATISTICS ORDER BY PROCESS_CPU DESC\""
+sid-hdb-s4h:~ # ps -eo pid,comm,%cpu,%mem,etime --sort=-%cpu | awk 'NR==1 || $2 ~ /^hdb/'
+  PID COMMAND         %CPU %MEM     ELAPSED
+ 4841 hdbindexserver  91.1 23.6       05:00
+ 4584 hdbnameserver   12.2  1.6       05:08
+ 4792 hdbcompileserve  4.2  0.1       05:00
+ 4835 hdbdocstore      3.6  1.0       05:00
+ 4847 hdbxsengine      2.2  0.5       05:00
+ 4838 hdbdpserver      2.0  0.5       05:00
+ 4844 hdbscriptserver  2.0  0.4       05:00
+ 6332 hdbwebdispatche  1.0  0.1       04:17
+ 6329 hdbdiserver      0.6  0.1       04:17
+ 4795 hdbpreprocessor  0.4  0.0       05:00
+ 4559 hdb.sapHDB_HDB0  0.1  0.0       05:08
+ 4732 hdbrsutil        0.0  0.0       05:02
+ 5395 hdbrsutil        0.0  0.0       04:46
+sid-hdb-s4h:~ # if [ -x /usr/bin/pidstat ]; then PIDS=$(pgrep -d, -f '(^|/)hdb(daemon|nameserver|indexserver|compileserver|preprocessor|scriptserver|docstore|dpserver|diserver|webdispatcher|xsengine)'); [ -n "$PIDS" ] && /usr/bin/pidstat -u -p "$PIDS" 1 10 || echo "No HANA processes found"; else echo "pidstat is not installed"; fi
+Linux 6.4.0-150700.53.19-default (sid-hdb-s4h) 	08/03/2026 	_x86_64_	(32 CPU)
+
+08:10:49 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:50 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:50 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:50 PM  1004      4795    1.00    0.00    0.00    0.00    1.00     2  hdbpreprocessor
+08:10:50 PM  1004      4835    1.00    0.00    0.00    0.00    1.00    27  hdbdocstore
+08:10:50 PM  1004      4838    1.00    0.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:50 PM  1004      4841    2.00    0.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:50 PM  1004      4844    0.00    0.00    0.00    0.00    0.00    27  hdbscriptserver
+08:10:50 PM  1004      4847    1.00    1.00    0.00    0.00    2.00    27  hdbxsengine
+08:10:50 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:50 PM  1004      6332    1.00    0.00    0.00    0.00    1.00    17  hdbwebdispatche
+
+08:10:50 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:51 PM  1004      4584    0.00    0.00    0.00    0.00    0.00     0  hdbnameserver
+08:10:51 PM  1004      4792    0.00    1.00    0.00    0.00    1.00    20  hdbcompileserve
+08:10:51 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:51 PM  1004      4835    0.00    0.00    0.00    0.00    0.00    27  hdbdocstore
+08:10:51 PM  1004      4838    1.00    0.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:51 PM  1004      4841    1.00    0.00    0.00    0.00    1.00    16  hdbindexserver
+08:10:51 PM  1004      4844    1.00    0.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:51 PM  1004      4847    0.00    0.00    0.00    0.00    0.00    27  hdbxsengine
+08:10:51 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:51 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:51 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:52 PM  1004      4584    1.00    1.00    0.00    0.00    2.00     0  hdbnameserver
+08:10:52 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:52 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:52 PM  1004      4835    1.00    1.00    0.00    0.00    2.00    27  hdbdocstore
+08:10:52 PM  1004      4838    0.00    0.00    0.00    0.00    0.00     9  hdbdpserver
+08:10:52 PM  1004      4841    2.00    0.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:52 PM  1004      4844    0.00    0.00    0.00    0.00    0.00    27  hdbscriptserver
+08:10:52 PM  1004      4847    1.00    0.00    0.00    0.00    1.00    27  hdbxsengine
+08:10:52 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:52 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:52 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:53 PM  1004      4584    0.00    0.00    0.00    0.00    0.00     0  hdbnameserver
+08:10:53 PM  1004      4792    1.00    0.00    0.00    0.00    1.00    20  hdbcompileserve
+08:10:53 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:53 PM  1004      4835    0.00    0.00    0.00    0.00    0.00    27  hdbdocstore
+08:10:53 PM  1004      4838    0.00    0.00    0.00    0.00    0.00     9  hdbdpserver
+08:10:53 PM  1004      4841    2.00    1.00    0.00    0.00    3.00    16  hdbindexserver
+08:10:53 PM  1004      4844    1.00    0.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:53 PM  1004      4847    0.00    0.00    0.00    0.00    0.00    27  hdbxsengine
+08:10:53 PM  1004      6329    1.00    0.00    0.00    0.00    1.00     0  hdbdiserver
+08:10:53 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:53 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:54 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:54 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:54 PM  1004      4795    0.00    1.00    0.00    0.00    1.00     2  hdbpreprocessor
+08:10:54 PM  1004      4835    1.00    0.00    0.00    0.00    1.00    27  hdbdocstore
+08:10:54 PM  1004      4838    1.00    0.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:54 PM  1004      4841    1.00    1.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:54 PM  1004      4844    0.00    1.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:54 PM  1004      4847    1.00    0.00    0.00    0.00    1.00    27  hdbxsengine
+08:10:54 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:54 PM  1004      6332    1.00    0.00    0.00    0.00    1.00    17  hdbwebdispatche
+
+08:10:54 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:55 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:55 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:55 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:55 PM  1004      4835    0.00    0.00    0.00    0.00    0.00    27  hdbdocstore
+08:10:55 PM  1004      4838    0.00    0.00    0.00    0.00    0.00     9  hdbdpserver
+08:10:55 PM  1004      4841    2.00    0.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:55 PM  1004      4844    0.00    1.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:55 PM  1004      4847    0.00    0.00    0.00    0.00    0.00    27  hdbxsengine
+08:10:55 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:55 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:55 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:56 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:56 PM  1004      4792    0.00    1.00    0.00    0.00    1.00    20  hdbcompileserve
+08:10:56 PM  1004      4795    1.00    0.00    0.00    0.00    1.00     2  hdbpreprocessor
+08:10:56 PM  1004      4835    1.00    0.00    0.00    0.00    1.00    27  hdbdocstore
+08:10:56 PM  1004      4838    1.00    0.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:56 PM  1004      4841    1.00    1.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:56 PM  1004      4844    1.00    0.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:56 PM  1004      4847    1.00    0.00    0.00    0.00    1.00    27  hdbxsengine
+08:10:56 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:56 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:56 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:57 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:57 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:57 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:57 PM  1004      4835    0.00    0.00    0.00    0.00    0.00    27  hdbdocstore
+08:10:57 PM  1004      4838    0.00    1.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:57 PM  1004      4841    1.00    0.00    0.00    0.00    1.00    16  hdbindexserver
+08:10:57 PM  1004      4844    0.00    1.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:57 PM  1004      4847    0.00    1.00    0.00    0.00    1.00    27  hdbxsengine
+08:10:57 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:57 PM  1004      6332    1.00    0.00    0.00    0.00    1.00    17  hdbwebdispatche
+
+08:10:57 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:58 PM  1004      4584    0.00    0.00    0.00    0.00    0.00     0  hdbnameserver
+08:10:58 PM  1004      4792    1.00    0.00    0.00    0.00    1.00    20  hdbcompileserve
+08:10:58 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:58 PM  1004      4835    1.00    0.00    0.00    0.00    1.00    27  hdbdocstore
+08:10:58 PM  1004      4838    1.00    0.00    0.00    0.00    1.00     9  hdbdpserver
+08:10:58 PM  1004      4841    2.00    0.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:58 PM  1004      4844    0.00    0.00    0.00    0.00    0.00    27  hdbscriptserver
+08:10:58 PM  1004      4847    0.00    0.00    0.00    0.00    0.00    27  hdbxsengine
+08:10:58 PM  1004      6329    0.00    1.00    0.00    0.00    1.00     0  hdbdiserver
+08:10:58 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+08:10:58 PM   UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+08:10:59 PM  1004      4584    1.00    0.00    0.00    0.00    1.00     0  hdbnameserver
+08:10:59 PM  1004      4792    0.00    0.00    0.00    0.00    0.00    20  hdbcompileserve
+08:10:59 PM  1004      4795    0.00    0.00    0.00    0.00    0.00     2  hdbpreprocessor
+08:10:59 PM  1004      4835    0.00    0.00    0.00    0.00    0.00    27  hdbdocstore
+08:10:59 PM  1004      4838    0.00    0.00    0.00    0.00    0.00     9  hdbdpserver
+08:10:59 PM  1004      4841    1.00    1.00    0.00    0.00    2.00    16  hdbindexserver
+08:10:59 PM  1004      4844    0.00    1.00    0.00    0.00    1.00    27  hdbscriptserver
+08:10:59 PM  1004      4847    1.00    0.00    0.00    0.00    1.00    27  hdbxsengine
+08:10:59 PM  1004      6329    0.00    0.00    0.00    0.00    0.00     0  hdbdiserver
+08:10:59 PM  1004      6332    0.00    0.00    0.00    0.00    0.00    17  hdbwebdispatche
+
+Average:      UID       PID    %usr %system  %guest   %wait    %CPU   CPU  Command
+Average:     1004      4584    0.70    0.10    0.00    0.00    0.80     -  hdbnameserver
+Average:     1004      4792    0.20    0.20    0.00    0.00    0.40     -  hdbcompileserve
+Average:     1004      4795    0.20    0.10    0.00    0.00    0.30     -  hdbpreprocessor
+Average:     1004      4835    0.50    0.10    0.00    0.00    0.60     -  hdbdocstore
+Average:     1004      4838    0.50    0.10    0.00    0.00    0.60     -  hdbdpserver
+Average:     1004      4841    1.50    0.40    0.00    0.00    1.90     -  hdbindexserver
+Average:     1004      4844    0.30    0.40    0.00    0.00    0.70     -  hdbscriptserver
+Average:     1004      4847    0.50    0.20    0.00    0.00    0.70     -  hdbxsengine
+Average:     1004      6329    0.10    0.10    0.00    0.00    0.20     -  hdbdiserver
+Average:     1004      6332    0.30    0.00    0.00    0.00    0.30     -  hdbwebdispatche
+sid-hdb-s4h:~ # ps -eo user,pid,comm,rss,vsz,%mem --sort=-rss | awk 'NR==1 || ($1=="hdbadm" && $3 ~ /^hdb/) {if(NR==1){print}else{printf "%-10s %-8s %-24s RSS=%8.2fGB VSZ=%8.2fGB MEM=%s%%\n",$1,$2,$3,$4/1048576,$5/1048576,$6}}'
+USER       PID COMMAND           RSS    VSZ %MEM
+hdbadm     4841     hdbindexserver           RSS=   58.54GB VSZ=   63.19GB MEM=23.6%
+hdbadm     4584     hdbnameserver            RSS=    4.00GB VSZ=    9.62GB MEM=1.6%
+hdbadm     4835     hdbdocstore              RSS=    2.70GB VSZ=    8.41GB MEM=1.0%
+hdbadm     4847     hdbxsengine              RSS=    1.46GB VSZ=    7.47GB MEM=0.5%
+hdbadm     4838     hdbdpserver              RSS=    1.31GB VSZ=    7.32GB MEM=0.5%
+hdbadm     4844     hdbscriptserver          RSS=    1.22GB VSZ=    5.42GB MEM=0.4%
+hdbadm     6332     hdbwebdispatche          RSS=    0.45GB VSZ=    5.65GB MEM=0.1%
+hdbadm     6329     hdbdiserver              RSS=    0.38GB VSZ=    5.26GB MEM=0.1%
+hdbadm     4792     hdbcompileserve          RSS=    0.32GB VSZ=    4.44GB MEM=0.1%
+hdbadm     4795     hdbpreprocessor          RSS=    0.22GB VSZ=    4.27GB MEM=0.0%
+hdbadm     4559     hdb.sapHDB_HDB0          RSS=    0.10GB VSZ=    0.46GB MEM=0.0%
+hdbadm     5395     hdbrsutil                RSS=    0.04GB VSZ=    6.18GB MEM=0.0%
+hdbadm     4732     hdbrsutil                RSS=    0.04GB VSZ=    0.68GB MEM=0.0%
+sid-hdb-s4h:~ # su - hdbadm -c 'hdbsql -U HDB_KEY_CAL -x -a -j "SELECT FILE_NAME || '\''|'\'' || SECTION || '\''|'\'' || KEY || '\''|'\'' || VALUE FROM SYS.M_INIFILE_CONTENTS WHERE FILE_NAME='\''global.ini'\'' AND SECTION='\''memorymanager'\'' AND KEY='\''global_allocation_limit'\''"'
+sid-hdb-s4h:~ # grep -RhsEi '^[[:space:]]*global_allocation_limit[[:space:]]*=' /hana/shared/HDB/global/hdb/custom/config /usr/sap/HDB/HDB02 2>/dev/null
+global_allocation_limit = 210000
+global_allocation_limit = 210000
+global_allocation_limit = 210000
+global_allocation_limit=0
+sid-hdb-s4h:~ # grep -RHnsEi '^[[:space:]]*global_allocation_limit[[:space:]]*=' /hana/shared/HDB/global/hdb/custom/config /usr/sap/HDB/HDB02 2>/dev/null
+/hana/shared/HDB/global/hdb/custom/config/DB_HDB/global.ini:12:global_allocation_limit = 210000
+/hana/shared/HDB/global/hdb/custom/config/global.ini:12:global_allocation_limit = 210000
+/usr/sap/HDB/HDB02/vhcalhdbdb/global.ini:9:global_allocation_limit = 210000
+/usr/sap/HDB/HDB02/exe/config/global.ini:981:global_allocation_limit=0
+sid-hdb-s4h:~ # find /hana/shared/HDB/global/hdb/custom/config -type f -name 'global.ini' -print -exec grep -HnEi '^[[:space:]]*global_allocation_limit[[:space:]]*=' {} \; 2>/dev/null
+/hana/shared/HDB/global/hdb/custom/config/DB_HDB/global.ini
+/hana/shared/HDB/global/hdb/custom/config/DB_HDB/global.ini:12:global_allocation_limit = 210000
+/hana/shared/HDB/global/hdb/custom/config/global.ini
+/hana/shared/HDB/global/hdb/custom/config/global.ini:12:global_allocation_limit = 210000
+sid-hdb-s4h:~ # find /usr/sap/HDB/HDB02 -type f -name 'global.ini' -print -exec grep -HnEi '^[[:space:]]*global_allocation_limit[[:space:]]*=' {} \; 2>/dev/null
+sid-hdb-s4h:~ # LIMIT_MB=210000; HANA_RSS_KB=$(ps -eo user=,comm=,rss= | awk '$1=="hdbadm" && $2~/^hdb/ {sum+=$3} END {printf "%.0f",sum}'); awk -v rss_kb="$HANA_RSS_KB" -v limit_mb="$LIMIT_MB" 'BEGIN {rss_gib=rss_kb/1024/1024; limit_gib=limit_mb/1024; printf "HANA RSS: %.2f GiB\nAllocation limit: %.2f GiB\nApproximate usage: %.1f%%\nApproximate headroom: %.2f GiB\n",rss_gib,limit_gib,100*rss_gib/limit_gib,limit_gib-rss_gib}'
+HANA RSS: 77.63 GiB
+Allocation limit: 205.08 GiB
+Approximate usage: 37.9%
+Approximate headroom: 127.45 GiB
+
+
+sid-hdb-s4h:~ # (
+> for p in \
+>     /hana/data/* \
+>     /hana/log/* \
+>     /hana/shared/* \
+>     /hana/backup* \
+>     /usr/sap \
+>     /usr/sap/* \
+>     /sapmnt \
+>     /sapmnt/*
+> do
+>     [ -e "$p" ] || continue
+>     findmnt -T "$p" -n -o TARGET 2>/dev/null
+> done | sort -u
+> )
+/
+/hana/data/HDB
+/hana/log/HDB
+/hana/shared/HDB
+/sapmnt/S4H
+/usr/sap/S4H
+sid-hdb-s4h:~ # (
+> for p in \
+>     /hana/data/* \
+>     /hana/log/* \
+>     /hana/shared/* \
+>     /hana/backup* \
+>     /usr/sap \
+>     /usr/sap/* \
+>     /sapmnt \
+>     /sapmnt/*
+> do
+>     [ -e "$p" ] || continue
+>     findmnt -T "$p" -n -o TARGET 2>/dev/null
+> done |
+> sort -u |
+> while IFS= read -r mnt; do
+>     findmnt -T "$mnt" -n -o SOURCE,FSTYPE,TARGET
+> done
+> )
+/dev/nvme1n1p3 xfs /
+/dev/mapper/vgcal-dbdata[/hana/data/HDB] xfs /hana/data/HDB
+/dev/mapper/vgcal-dblog[/hana/log/HDB] xfs /hana/log/HDB
+/dev/mapper/vgcal-sysfiles[/hana/shared/HDB] xfs /hana/shared/HDB
+/dev/mapper/vgcal-sysfiles[/sapmnt/S4H] xfs /sapmnt/S4H
+/dev/mapper/vgcal-sysfiles[/usr/sap/S4H] xfs /usr/sap/S4H
+sid-hdb-s4h:~ # (
+> WARN=85
+> CRIT=90
+> 
+> MOUNTS=$(
+>     for p in \
+>         /hana/data/* \
+>         /hana/log/* \
+>         /hana/shared/* \
+>         /hana/backup* \
+>         /usr/sap \
+>         /usr/sap/* \
+>         /sapmnt \
+>         /sapmnt/*
+>     do
+>         [ -e "$p" ] || continue
+>         findmnt -T "$p" -n -o TARGET 2>/dev/null
+>     done | sort -u
+> )
+> 
+> printf '%-7s %-7s %-12s %-10s %-10s %-10s %s\n' \
+>     "SPACE" "INODE" "SOURCE" "SIZE" "AVAILABLE" "FSTYPE" "MOUNT"
+> 
+> printf '%s\n' "$MOUNTS" |
+> while IFS= read -r mnt; do
+>     [ -n "$mnt" ] || continue
+> 
+>     source=$(findmnt -T "$mnt" -n -o SOURCE)
+>     fstype=$(findmnt -T "$mnt" -n -o FSTYPE)
+> 
+>     space_pct=$(
+>         df -P "$mnt" |
+>         awk 'NR==2 {gsub("%","",$5); print $5+0}'
+>     )
+> 
+>     inode_pct=$(
+>         df -Pi "$mnt" |
+>         awk 'NR==2 {gsub("%","",$5); print $5+0}'
+>     )
+> 
+>     size=$(
+>         df -hP "$mnt" |
+>         awk 'NR==2 {print $2}'
+>     )
+> 
+>     available=$(
+>         df -hP "$mnt" |
+>         awk 'NR==2 {print $4}'
+>     )
+> 
+>     if [ "$space_pct" -ge "$CRIT" ]; then
+>         space_status="FAIL"
+>     elif [ "$space_pct" -ge "$WARN" ]; then
+>         space_status="WARN"
+>     else
+>         space_status="PASS"
+>     fi
+> 
+>     if [ "$inode_pct" -ge "$CRIT" ]; then
+>         inode_status="FAIL"
+>     elif [ "$inode_pct" -ge "$WARN" ]; then
+>         inode_status="WARN"
+>     else
+>         inode_status="PASS"
+>     fi
+> 
+>     printf '%-7s %-7s %-12s %-10s %-10s %-10s %s\n' \
+>         "${space_status}:${space_pct}%" \
+>         "${inode_status}:${inode_pct}%" \
+>         "$source" \
+>         "$size" \
+>         "$available" \
+>         "$fstype" \
+>         "$mnt"
+> done
+> )
+SPACE   INODE   SOURCE       SIZE       AVAILABLE  FSTYPE     MOUNT
+PASS:49% PASS:2% /dev/nvme1n1p3 10G        5.1G       xfs        /
+FAIL:90% PASS:1% /dev/mapper/vgcal-dbdata[/hana/data/HDB] 418G       44G        xfs        /hana/data/HDB
+PASS:76% PASS:1% /dev/mapper/vgcal-dblog[/hana/log/HDB] 122G       31G        xfs        /hana/log/HDB
+PASS:56% PASS:1% /dev/mapper/vgcal-sysfiles[/hana/shared/HDB] 53G        24G        xfs        /hana/shared/HDB
+PASS:56% PASS:1% /dev/mapper/vgcal-sysfiles[/sapmnt/S4H] 53G        24G        xfs        /sapmnt/S4H
+PASS:56% PASS:1% /dev/mapper/vgcal-sysfiles[/usr/sap/S4H] 53G        24G        xfs        /usr/sap/S4H
+sid-hdb-s4h:~ # (
+> for p in \
+>     /hana/data/* \
+>     /hana/log/* \
+>     /hana/shared/* \
+>     /hana/backup* \
+>     /usr/sap \
+>     /usr/sap/* \
+>     /sapmnt \
+>     /sapmnt/*
+> do
+>     [ -e "$p" ] || continue
+>     findmnt -T "$p" -n -o TARGET 2>/dev/null
+> done |
+> sort -u |
+> while IFS= read -r mnt; do
+>     df -hP "$mnt" | tail -n 1
+> done
+> )
+/dev/nvme1n1p3   10G  4.9G  5.1G  49% /
+/dev/mapper/vgcal-dbdata  418G  375G   44G  90% /hana/data/HDB
+/dev/mapper/vgcal-dblog  122G   92G   31G  76% /hana/log/HDB
+/dev/mapper/vgcal-sysfiles   53G   30G   24G  56% /hana/shared/HDB
+/dev/mapper/vgcal-sysfiles   53G   30G   24G  56% /sapmnt/S4H
+/dev/mapper/vgcal-sysfiles   53G   30G   24G  56% /usr/sap/S4H
+sid-hdb-s4h:~ # (
+> for p in \
+>     /hana/data/* \
+>     /hana/log/* \
+>     /hana/shared/* \
+>     /hana/backup* \
+>     /usr/sap \
+>     /usr/sap/* \
+>     /sapmnt \
+>     /sapmnt/*
+> do
+>     [ -e "$p" ] || continue
+>     findmnt -T "$p" -n -o TARGET 2>/dev/null
+> done |
+> sort -u |
+> while IFS= read -r mnt; do
+>     df -iP "$mnt" | tail -n 1
+> done
+> )
+/dev/nvme1n1p3 5231040 87249 5143791    2% /
+/dev/mapper/vgcal-dbdata 91823064    33 91823031    1% /hana/data/HDB
+/dev/mapper/vgcal-dblog 63499960   166 63499794    1% /hana/log/HDB
+/dev/mapper/vgcal-sysfiles 27795456 58883 27736573    1% /hana/shared/HDB
+/dev/mapper/vgcal-sysfiles 27795456 58883 27736573    1% /sapmnt/S4H
+/dev/mapper/vgcal-sysfiles 27795456 58883 27736573    1% /usr/sap/S4H
+sid-hdb-s4h:~ # df -hP /hana/data/HDB /hana/log/HDB /hana/shared/HDB
+Filesystem                  Size  Used Avail Use% Mounted on
+/dev/mapper/vgcal-dbdata    418G  375G   44G  90% /hana/data/HDB
+/dev/mapper/vgcal-dblog     122G   92G   31G  76% /hana/log/HDB
+/dev/mapper/vgcal-sysfiles   53G   30G   24G  56% /hana/shared/HDB
+sid-hdb-s4h:~ # df -iP /hana/data/HDB /hana/log/HDB /hana/shared/HDB
+Filesystem                   Inodes IUsed    IFree IUse% Mounted on
+/dev/mapper/vgcal-dbdata   91823064    33 91823031    1% /hana/data/HDB
+/dev/mapper/vgcal-dblog    63499960   166 63499794    1% /hana/log/HDB
+/dev/mapper/vgcal-sysfiles 27795456 58883 27736573    1% /hana/shared/HDB
+sid-hdb-s4h:~ # (
+> WARN=85
+> CRIT=90
+> 
+> for item in \
+>     "DATA:/hana/data/HDB" \
+>     "LOG:/hana/log/HDB" \
+>     "SHARED:/hana/shared/HDB"
+> do
+>     type=${item%%:*}
+>     path=${item#*:}
+> 
+>     if [ ! -e "$path" ]; then
+>         echo "MISSING: $type path $path"
+>         continue
+>     fi
+> 
+>     used=$(
+>         df -P "$path" |
+>         awk 'NR==2 {gsub("%","",$5); print $5+0}'
+>     )
+> 
+>     inode_used=$(
+>         df -Pi "$path" |
+>         awk 'NR==2 {gsub("%","",$5); print $5+0}'
+>     )
+> 
+>     if [ "$used" -ge "$CRIT" ]; then
+>         status="FAIL"
+>     elif [ "$used" -ge "$WARN" ]; then
+>         status="WARN"
+>     else
+>         status="PASS"
+>     fi
+> 
+>     if [ "$inode_used" -ge "$CRIT" ]; then
+>         inode_status="FAIL"
+>     elif [ "$inode_used" -ge "$WARN" ]; then
+>         inode_status="WARN"
+>     else
+>         inode_status="PASS"
+>     fi
+> 
+>     printf '%s: %s space=%s%%, %s inode=%s%%, path=%s\n' \
+>         "$type" "$status" "$used" "$inode_status" "$inode_used" "$path"
+> done
+> )
+DATA: FAIL space=90%, PASS inode=1%, path=/hana/data/HDB
+LOG: PASS space=76%, PASS inode=1%, path=/hana/log/HDB
+SHARED: PASS space=56%, PASS inode=1%, path=/hana/shared/HDB
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, ROUND(USED_SIZE/1024/1024/1024,2) AS USED_GB, ROUND(TOTAL_SIZE/1024/1024/1024,2) AS TOTAL_GB, ROUND(100*USED_SIZE/NULLIF(TOTAL_SIZE,0),1) AS USED_PCT FROM SYS.M_DATA_VOLUME_STATISTICS ORDER BY HOST, PORT, VOLUME_ID\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, STATE, COUNT(*) AS SEGMENT_COUNT, ROUND(SUM(USED_SIZE)/1024/1024/1024,2) AS USED_GB, ROUND(SUM(TOTAL_SIZE)/1024/1024/1024,2) AS TOTAL_GB FROM SYS.M_LOG_SEGMENTS GROUP BY HOST, PORT, STATE ORDER BY HOST, PORT, STATE\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, COUNT(*) AS TOTAL_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='FREE' THEN 1 ELSE 0 END) AS FREE_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='PREALLOCATED' THEN 1 ELSE 0 END) AS PREALLOCATED_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='WRITING' THEN 1 ELSE 0 END) AS WRITING_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='CLOSED' THEN 1 ELSE 0 END) AS CLOSED_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='TRUNCATED' THEN 1 ELSE 0 END) AS TRUNCATED_SEGMENTS, SUM(CASE WHEN UPPER(STATE)='BACKEDUP' THEN 1 ELSE 0 END) AS BACKEDUP_SEGMENTS FROM SYS.M_LOG_SEGMENTS GROUP BY HOST, PORT ORDER BY HOST, PORT\""
+sid-hdb-s4h:~ # journalctl -k --since "24 hours ago" --no-pager |
+> grep -Ei 'I/O error|buffer I/O error|blk_update_request|critical medium error|nvme.*(error|timeout|reset|abort)|xfs.*(error|corrupt)|ext4.*(error|corrupt)|filesystem.*read-only' ||
+> echo "PASS: no kernel filesystem or storage errors found in the last 24 hours"
+Aug 03 20:04:04 localhost kernel: Command line: BOOT_IMAGE=/boot/vmlinuz-6.4.0-150700.53.19-default root=LABEL=ROOT console=ttyS0 net.ifnames=0 iommu.passthrough=1 8250.nr_uarts=4 dis_ucode_ldr multipath=off nvme_core.admin_timeout=4294967295 nvme_core.io_timeout=4294967295 systemd.unified_cgroup_hierarchy=1
+Aug 03 20:04:04 localhost kernel: Kernel command line: BOOT_IMAGE=/boot/vmlinuz-6.4.0-150700.53.19-default root=LABEL=ROOT console=ttyS0 net.ifnames=0 iommu.passthrough=1 8250.nr_uarts=4 dis_ucode_ldr multipath=off nvme_core.admin_timeout=4294967295 nvme_core.io_timeout=4294967295 systemd.unified_cgroup_hierarchy=1
+sid-hdb-s4h:~ # journalctl -k --since "7 days ago" --no-pager |
+> grep -Ei 'I/O error|buffer I/O error|blk_update_request|critical medium error|nvme.*(error|timeout|reset|abort)|xfs.*(error|corrupt)|ext4.*(error|corrupt)|filesystem.*read-only' ||
+> echo "PASS: no kernel filesystem or storage errors found in the last 7 days"
+Aug 03 20:04:04 localhost kernel: Command line: BOOT_IMAGE=/boot/vmlinuz-6.4.0-150700.53.19-default root=LABEL=ROOT console=ttyS0 net.ifnames=0 iommu.passthrough=1 8250.nr_uarts=4 dis_ucode_ldr multipath=off nvme_core.admin_timeout=4294967295 nvme_core.io_timeout=4294967295 systemd.unified_cgroup_hierarchy=1
+Aug 03 20:04:04 localhost kernel: Kernel command line: BOOT_IMAGE=/boot/vmlinuz-6.4.0-150700.53.19-default root=LABEL=ROOT console=ttyS0 net.ifnames=0 iommu.passthrough=1 8250.nr_uarts=4 dis_ucode_ldr multipath=off nvme_core.admin_timeout=4294967295 nvme_core.io_timeout=4294967295 systemd.unified_cgroup_hierarchy=1
+sid-hdb-s4h:~ # findmnt -rn -o TARGET,OPTIONS |
+> awk '$1 ~ /^\/(hana|usr\/sap|sapmnt)(\/|$)/ && $2 ~ /(^|,)ro(,|$)/ {print "FAIL: read-only filesystem:",$0}'
+sid-hdb-s4h:~ # for path in /hana/data/HDB /hana/log/HDB; do
+>     echo "===== $path ====="
+>     findmnt -T "$path" -o SOURCE,TARGET,FSTYPE,OPTIONS
+>     echo
+> done
+===== /hana/data/HDB =====
+SOURCE                               TARGET   FSTYPE OPTIONS
+/dev/mapper/vgcal-dbdata[/hana/data/HDB]
+                                     /hana/data/HDB
+                                              xfs    rw,noatime,nodiratime,attr2,inode64,logbufs=8,logbsize=256k,sunit=12
+
+===== /hana/log/HDB =====
+SOURCE                            TARGET   FSTYPE OPTIONS
+/dev/mapper/vgcal-dblog[/hana/log/HDB]
+                                  /hana/log/HDB
+                                           xfs    rw,noatime,nodiratime,attr2,inode64,logbufs=8,logbsize=256k,sunit=128,s
+
+sid-hdb-s4h:~ # lsblk -o NAME,TYPE,SIZE,FSTYPE,MOUNTPOINTS,ROTA,MODEL
+NAME             TYPE  SIZE FSTYPE      MOUNTPOINTS           ROTA MODEL
+nvme2n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme0n1          disk   24G swap        [SWAP]                   0 Amazon Elastic Block Store
+nvme4n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme7n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme3n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme1n1          disk   10G                                      0 Amazon Elastic Block Store
+├─nvme1n1p1      part    2M                                      0 
+├─nvme1n1p2      part   20M vfat        /boot/efi                0 
+└─nvme1n1p3      part   10G xfs         /                        0 
+nvme9n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme6n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme11n1         disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme5n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme8n1          disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme13n1         disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme12n1         disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+nvme10n1         disk   50G LVM2_member                          0 Amazon Elastic Block Store
+├─vgcal-dbdata   lvm   418G xfs         /hana/data/HDB           0 
+│                                       /vol/vol_S4H/data          
+├─vgcal-dblog    lvm   122G xfs         /hana/log/HDB            0 
+│                                       /vol/vol_S4H/log           
+├─vgcal-sysfiles lvm    53G xfs         /usr/sap/S4H             0 
+│                                       /sapmnt/S4H                
+│                                       /hana/shared/HDB           
+│                                       /cal/plugins               
+│                                       /vol/vol_S4H/sysfiles      
+└─vgcal-back     lvm   3.5G                                      0 
+sid-hdb-s4h:~ # iostat -dxm 1 10
+Linux 6.4.0-150700.53.19-default (sid-hdb-s4h) 	08/03/2026 	_x86_64_	(32 CPU)
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1         49.84    2.33      3.54      0.05    33.01     0.13  39.84   5.44   18.90    3.11   0.95    72.83    22.40   0.87   4.53
+nvme0n1          0.10    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.60    0.00   0.00    22.45     0.00   0.45   0.00
+nvme4n1         46.71    2.09      3.54      0.05    32.22     0.05  40.82   2.20   20.07    2.88   0.94    77.63    24.36   0.77   3.76
+nvme7n1         46.81    2.07      3.55      0.05    32.34     0.04  40.85   1.98   19.46    3.68   0.92    77.55    24.37   0.84   4.12
+nvme3n1         47.17    2.18      3.54      0.05    32.66     0.13  40.91   5.76   21.10    3.12   1.00    76.88    23.63   0.86   4.26
+nvme1n1          5.76    1.05      0.29      0.02     0.03     0.09   0.45   8.23    0.84    1.04   0.01    51.10    19.13   0.37   0.25
+nvme9n1         49.64    2.21      3.54      0.05    33.01     0.05  39.94   2.06   19.77    3.17   0.99    73.07    23.47   0.93   4.84
+nvme6n1         46.75    2.06      3.54      0.05    32.20     0.07  40.78   3.20   19.46    2.72   0.92    77.56    25.03   1.00   4.86
+nvme11n1        47.02    2.07      3.55      0.05    32.21     0.03  40.65   1.55   18.85    3.08   0.89    77.27    24.72   1.09   5.33
+nvme5n1         49.53    1.94      3.55      0.05    33.02     0.05  40.00   2.43   20.46    3.17   1.02    73.30    25.54   0.74   3.79
+nvme8n1         47.03    2.04      3.54      0.05    32.61     0.04  40.95   1.85   20.96    2.97   0.99    77.16    24.67   0.83   4.08
+nvme13n1        46.46    2.02      3.54      0.05    32.23     0.05  40.96   2.31   20.67    3.86   0.97    78.08    24.93   0.80   3.88
+nvme12n1        46.69    2.13      3.54      0.05    32.23     0.07  40.84   3.24   19.36    2.89   0.91    77.71    23.84   1.42   6.94
+nvme10n1        47.21    1.99      3.55      0.05    32.68     0.04  40.91   1.74   20.76    3.01   0.99    76.93    25.84   1.04   5.13
+dm-0           815.44   12.39     34.00      0.41     0.00     0.00   0.00   0.00   50.39    1.29  41.11    42.70    33.84   0.07   5.42
+dm-1             3.27   10.05      0.19      0.09     0.00     0.00   0.00   0.00    8.23    1.89   0.05    60.41     9.07   0.98   1.30
+dm-2           142.01    3.45      8.32      0.10     0.00     0.00   0.00   0.00    2.39   14.01   0.39    60.03    29.57   0.16   2.31
+dm-3             0.01    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.73    0.00   0.00    64.00     0.00   0.73   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          1.00    0.00      0.01      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     8.00     0.00   4.00   0.40
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme7n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme3n1          0.00    2.00      0.00      0.01     0.00     0.00   0.00   0.00    0.00    0.50   0.00     0.00     4.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    6.00      0.00      0.02     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     4.00   0.00   0.00
+dm-2             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   4.00   0.40
+nvme7n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     4.00   0.00   0.00
+dm-2             0.00    3.00      0.00      0.01     0.00     0.00   0.00   0.00    0.00    1.33   0.00     0.00     4.00   1.33   0.40
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme7n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    4.00      0.00      0.02     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     4.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          2.00    0.00      0.02      0.00     0.00     0.00   0.00   0.00    0.50    0.00   0.00    10.00     0.00   0.00   0.00
+nvme9n1          0.00    1.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00     4.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    1.00      0.00      0.06     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00    64.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    2.00      0.00      0.07     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00    34.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+Device            r/s     w/s     rMB/s     wMB/s   rrqm/s   wrqm/s  %rrqm  %wrqm r_await w_await aqu-sz rareq-sz wareq-sz  svctm  %util
+nvme2n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme0n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme4n1          0.00    1.00      0.00      0.01     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00    12.00   0.00   0.00
+nvme7n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme3n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme1n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme9n1          0.00    2.00      0.00      0.07     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00    34.00   2.00   0.40
+nvme6n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme11n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme5n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme8n1          0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme13n1         0.00    1.00      0.00      0.06     0.00     0.00   0.00   0.00    0.00    1.00   0.00     0.00    64.00   0.00   0.00
+nvme12n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+nvme10n1         0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-0             0.00    2.00      0.00      0.07     0.00     0.00   0.00   0.00    0.00    2.00   0.00     0.00    34.00   2.00   0.40
+dm-1             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+dm-2             0.00    2.00      0.00      0.07     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00    38.00   0.00   0.00
+dm-3             0.00    0.00      0.00      0.00     0.00     0.00   0.00   0.00    0.00    0.00   0.00     0.00     0.00   0.00   0.00
+
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, \\\"TYPE\\\", PATH, TOTAL_READS, TOTAL_WRITES, ROUND(TOTAL_READ_TIME/NULLIF(TOTAL_READS,0)/1000,3) AS AVG_SYNC_READ_MS, ROUND(TOTAL_WRITE_TIME/NULLIF(TOTAL_WRITES,0)/1000,3) AS AVG_SYNC_WRITE_MS, ROUND((TOTAL_READ_SIZE+TOTAL_WRITE_SIZE)*1000000/NULLIF(TOTAL_IO_TIME,0)/1024/1024,2) AS APPROX_MB_PER_SEC, TOTAL_SHORT_READS, TOTAL_SHORT_WRITES, TOTAL_FULL_RETRY_READS, TOTAL_FULL_RETRY_WRITES, TOTAL_FAILED_READS, TOTAL_FAILED_WRITES, BLOCKED_WRITE_REQUESTS, MAX_BLOCKED_WRITE_REQUESTS FROM SYS.M_VOLUME_IO_TOTAL_STATISTICS ORDER BY HOST, PORT, \\\"TYPE\\\", PATH\""
+Unmatched '"'.
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, \\\"TYPE\\\", PATH, TOTAL_READS, TOTAL_WRITES, ROUND(TOTAL_READ_TIME/NULLIF(TOTAL_READS,0)/1000,3) AS AVG_SYNC_READ_MS, ROUND(TOTAL_WRITE_TIME/NULLIF(TOTAL_WRITES,0)/1000,3) AS AVG_SYNC_WRITE_MS, ROUND((TOTAL_READ_SIZE+TOTAL_WRITE_SIZE)*1000000/NULLIF(TOTAL_IO_TIME,0)/1024/1024,2) AS APPROX_MB_PER_SEC, TOTAL_SHORT_READS, TOTAL_SHORT_WRITES, TOTAL_FULL_RETRY_READS, TOTAL_FULL_RETRY_WRITES, TOTAL_FAILED_READS, TOTAL_FAILED_WRITES, BLOCKED_WRITE_REQUESTS, MAX_BLOCKED_WRITE_REQUESTS FROM SYS.M_VOLUME_IO_TOTAL_STATISTICS ORDER BY HOST, PORT, \\\"TYPE\\\", PATH\""
+Unmatched '"'.
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, \\\"TYPE\\\", PATH, TOTAL_SHORT_READS, TOTAL_SHORT_WRITES, TOTAL_FULL_RETRY_READS, TOTAL_FULL_RETRY_WRITES, TOTAL_FAILED_READS, TOTAL_FAILED_WRITES, BLOCKED_WRITE_REQUESTS, MAX_BLOCKED_WRITE_REQUESTS FROM SYS.M_VOLUME_IO_TOTAL_STATISTICS WHERE TOTAL_SHORT_READS>0 OR TOTAL_SHORT_WRITES>0 OR TOTAL_FULL_RETRY_READS>0 OR TOTAL_FULL_RETRY_WRITES>0 OR TOTAL_FAILED_READS>0 OR TOTAL_FAILED_WRITES>0 OR BLOCKED_WRITE_REQUESTS>0 ORDER BY HOST, PORT, \\\"TYPE\\\", PATH\""
+Unmatched '"'.
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, START_TIME, INITIATION, PURPOSE, STATE, SAVEPOINTS, REQUESTED_FREQUENCY AS REQUESTED_FREQUENCY_S, LAST_FREQUENCY AS LAST_FREQUENCY_S, ROUND(LAST_DURATION/1000000,3) AS LAST_DURATION_S, ROUND(100*LAST_DURATION/NULLIF(REQUESTED_FREQUENCY*1000000,0),2) AS DURATION_VS_FREQUENCY_PCT, ROUND(LAST_CRITICAL_PHASE_DURATION/1000000,3) AS CRITICAL_PHASE_S, ROUND(LAST_TOTAL_SIZE/1024/1024,2) AS WRITTEN_MB FROM SYS.M_SAVEPOINT_STATISTICS ORDER BY HOST, PORT, VOLUME_ID\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, START_TIME, STATE, ROUND(LAST_DURATION/1000000,3) AS DURATION_S, REQUESTED_FREQUENCY AS FREQUENCY_S, ROUND(100*LAST_DURATION/NULLIF(REQUESTED_FREQUENCY*1000000,0),2) AS DURATION_PCT, CASE WHEN UPPER(STATE)='ABORTED' THEN 'FAIL' WHEN UPPER(STATE)='DONE' AND LAST_DURATION<=REQUESTED_FREQUENCY*100000 THEN 'PASS' WHEN UPPER(STATE)='DONE' THEN 'WARN' ELSE 'IN_PROGRESS' END AS STATUS FROM SYS.M_SAVEPOINT_STATISTICS ORDER BY HOST, PORT, VOLUME_ID\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT TOP 20 HOST, PORT, VOLUME_ID, START_TIME, INITIATION, PURPOSE, STATE, ROUND(DURATION/1000000,3) AS DURATION_S, REQUESTED_FREQUENCY AS FREQUENCY_S, TIME_SINCE_PREVIOUS AS SINCE_PREVIOUS_S, ROUND(CRITICAL_PHASE_DURATION/1000000,3) AS CRITICAL_PHASE_S, ROUND(TOTAL_SIZE/1024/1024,2) AS WRITTEN_MB FROM SYS.M_SAVEPOINTS ORDER BY START_TIME DESC\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, START_TIME, INITIATION, PURPOSE, STATE, ROUND(DURATION/1000000,3) AS DURATION_S FROM SYS.M_SAVEPOINTS WHERE UPPER(STATE)='ABORTED' ORDER BY START_TIME DESC\""
+sid-hdb-s4h:~ # su - hdbadm -c "hdbsql -U HDB_KEY_CAL -x -a -j \"SELECT HOST, PORT, VOLUME_ID, START_TIME, PURPOSE, STATE, ROUND(DURATION/1000000,3) AS DURATION_S, REQUESTED_FREQUENCY AS FREQUENCY_S, ROUND(100*DURATION/NULLIF(REQUESTED_FREQUENCY*1000000,0),2) AS DURATION_PCT, ROUND(CRITICAL_PHASE_DURATION/1000000,3) AS CRITICAL_PHASE_S FROM SYS.M_SAVEPOINTS WHERE UPPER(STATE)='DONE' AND DURATION>REQUESTED_FREQUENCY*100000 ORDER BY START_TIME DESC\""
+sid-hdb-s4h:~ # find /usr/sap/HDB/HDB02 -type f -path '*/trace/*' -name 'indexserver*.trc' -mtime -7 -print0 2>/dev/null |
+> xargs -0 -r grep -HiE 'savepoint.*(abort|failed|failure|error|timeout)|(?:abort|failed|failure|error|timeout).*savepoint' |
+> tail -n 100
+sid-hdb-s4h:~ # 
+
+These are what we can and cannot do with the current access:
+ 
+Can:
+Check all SAP/HANA filesystem capacity
+Check filesystem inode usage
+Check HANA data filesystem capacity
+Check HANA log filesystem capacity
+Check live OS-level I/O activity
+Cannot:
+Check HANA internal data-volume usage
+Check HANA log segment usage and reuse state
+HANA internal persistence I/O statistics
+Complete tenant HDB persistence performance
