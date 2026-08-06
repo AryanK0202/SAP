@@ -40,7 +40,7 @@ MAX_BODY_BYTES = 1_000_000
 MAX_LOG_LINES = 5_000
 MAX_PREVIEW_BYTES = 1_000_000
 RUN_DIRECTORY_RE = re.compile(r"^Run directory:\s*(?P<path>.+?)\s*$")
-UI_BUILD = "2026.08.06-artifact-tree-v8-markdown-initial-preview-fix"
+UI_BUILD = "2026.08.06-artifact-tree-v10-vscode-code-blocks"
 
 
 def _truthy(value: Any) -> bool:
@@ -1924,13 +1924,15 @@ main {
   color: var(--muted);
 }
 .markdown-view pre {
-  margin: 0 0 1rem;
+  margin: .65rem 0 1.15rem;
   overflow: auto;
-  padding: .85rem 1rem;
+  padding: .95rem 1.05rem;
+  border: 1px solid #d0d7de;
   border-radius: 6px;
-  background: var(--code-bg);
-  color: #d1e0ff;
+  background: #f6f8fa;
+  color: #24292f;
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
 }
 .markdown-view code {
   border-radius: 4px;
@@ -1986,10 +1988,10 @@ main {
 <main>
   <div class="repo-bar">
     <div>
-      <h1 class="repo-title">Artifacts</h1>
+      <h1 class="repo-title">artifacts</h1>
       <div class="repo-subtitle">Expand folders into a file tree on the left and preview files on the right.</div>
     </div>
-    <div style="display:flex;align-items:center;gap:.5rem"><button id="allFiles" type="button">All files</button></div>
+    <div style="display:flex;align-items:center;gap:.5rem"><span class="build-badge">__UI_BUILD__</span><button id="allFiles" type="button">All files</button></div>
   </div>
   <section class="explorer" aria-label="Artifact explorer">
     <aside class="sidebar">
@@ -2346,7 +2348,9 @@ function renderMarkdownInline(text) {
   let value = escapeHtml(text);
   const codeTokens = [];
   value = value.replace(/`([^`\n]+)`/g, (_, code) => {
-    const token = `@@MD_CODE_${codeTokens.length}@@`;
+    // Use private-use Unicode sentinels so later Markdown substitutions cannot
+    // accidentally interpret the placeholder itself as emphasis.
+    const token = `\uE000${codeTokens.length}\uE001`;
     codeTokens.push(`<code>${code}</code>`);
     return token;
   });
@@ -2359,11 +2363,15 @@ function renderMarkdownInline(text) {
     return safe ? `<a href="${escapeHtml(safe)}" target="_blank" rel="noopener">${label}</a>` : `[${label}](${href})`;
   });
   value = value.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
-  value = value.replace(/__([^_\n]+)__/g, '<strong>$1</strong>');
+  // CommonMark does not treat underscores inside words (for example
+  // component_abap or hana_db) as emphasis delimiters.
+  value = value.replace(/(^|[^A-Za-z0-9])__([^_\n]+)__(?=$|[^A-Za-z0-9])/g, '$1<strong>$2</strong>');
   value = value.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
   value = value.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
-  value = value.replace(/(^|[^_])_([^_\n]+)_/g, '$1<em>$2</em>');
-  codeTokens.forEach((htmlValue, index) => { value = value.replace(`@@MD_CODE_${index}@@`, htmlValue); });
+  value = value.replace(/(^|[^A-Za-z0-9])_([^_\n]+)_(?=$|[^A-Za-z0-9])/g, '$1<em>$2</em>');
+  codeTokens.forEach((htmlValue, index) => {
+    value = value.split(`\uE000${index}\uE001`).join(htmlValue);
+  });
   return value;
 }
 function isMarkdownTableSeparator(line) {
@@ -2400,16 +2408,35 @@ function markdownToHtml(content) {
   while (index < lines.length) {
     const line = lines[index];
     const trimmed = line.trim();
-    const fence = line.match(/^\s*```([^`]*)$/);
+    // Support CommonMark-style fenced code blocks, including fences longer
+    // than three characters and the compact one-line form emitted by some
+    // validation report generators (for example: ```text value ```).
+    const inlineFence = line.match(/^\s*(`{3,}|~{3,})\s*([A-Za-z0-9_+.-]*)\s+(.+?)\s*\1\s*$/);
+    if (inlineFence) {
+      flushOpen();
+      const language = inlineFence[2].trim();
+      const className = language ? ` class="language-${escapeHtml(language.replace(/[^A-Za-z0-9_+.-]/g, ''))}"` : '';
+      out.push(`<pre><code${className}>${escapeHtml(inlineFence[3])}</code></pre>`);
+      index++;
+      continue;
+    }
+    const fence = line.match(/^\s*(`{3,}|~{3,})\s*([^`~]*)$/);
     if (fence) {
       flushOpen();
+      const marker = fence[1];
+      const fenceChar = marker[0];
+      const fenceLength = marker.length;
+      const language = fence[2].trim().split(/\s+/, 1)[0] || '';
+      const closingFence = new RegExp(`^\\s*${fenceChar === '`' ? '`' : '~'}{${fenceLength},}\\s*$`);
       const code = [];
       index++;
-      while (index < lines.length && !/^\s*```\s*$/.test(lines[index])) { code.push(lines[index]); index++; }
-      const language = fence[1].trim();
-      const className = language ? ` class="language-${escapeHtml(language.replace(/[^A-Za-z0-9_-]/g, ''))}"` : '';
+      while (index < lines.length && !closingFence.test(lines[index])) {
+        code.push(lines[index]);
+        index++;
+      }
+      const className = language ? ` class="language-${escapeHtml(language.replace(/[^A-Za-z0-9_+.-]/g, ''))}"` : '';
       out.push(`<pre><code${className}>${escapeHtml(code.join('\n'))}</code></pre>`);
-      index++;
+      if (index < lines.length) index++;
       continue;
     }
     if (!trimmed) { flushOpen(); index++; continue; }
