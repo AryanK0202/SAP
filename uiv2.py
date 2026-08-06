@@ -655,7 +655,7 @@ select {
 }
 input[type="search"] { min-width: min(22rem, 100%); }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); vertical-align: -2px; }
-.app-shell { width: min(1280px, calc(100% - 32px)); margin: 0 auto 2rem; }
+.app-shell { width: min(1600px, calc(100% - 32px)); margin: 0 auto 2rem; }
 .app-header {
   margin: 0 0 .9rem;
   padding: .55rem 0;
@@ -665,7 +665,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary)
 }
 .header-row {
   display: flex;
-  width: min(1280px, calc(100% - 32px));
+  width: min(1600px, calc(100% - 32px));
   margin: 0 auto;
   align-items: center;
   justify-content: space-between;
@@ -1703,13 +1703,15 @@ button:hover, .button:hover { background: #eef1f4; text-decoration: none; }
 button.primary, .button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
 button.primary:hover, .button.primary:hover { background: var(--primary-hover); }
 button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
 header {
-  background: #24292f;
-  color: #fff;
-  border-bottom: 1px solid #57606a;
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
 }
+
 .header-row {
-  width: min(1440px, calc(100% - 32px));
+  width: min(1600px, calc(100% - 32px));
   min-height: 56px;
   margin: 0 auto;
   display: flex;
@@ -1717,9 +1719,33 @@ header {
   justify-content: space-between;
   gap: 1rem;
 }
-.header-title { display: flex; align-items: center; gap: .65rem; font-weight: 600; }
-.header-mark { font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.header-row .button { background: #2f363d; border-color: #57606a; color: #fff; }
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.header-mark {
+  color: var(--text);
+  font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.header-row .button {
+  background: #fff;
+  border-color: #8c959f;
+  color: var(--text);
+}
+
+.header-row .button:hover {
+  background: var(--surface-muted);
+  border-color: #6e7781;
+}
+
 main {
   width: min(1600px, calc(100% - 32px));
   height: calc(100vh - 56px);
@@ -1740,11 +1766,18 @@ main {
 }
 .repo-title { margin: 0; font-size: 1.15rem; font-weight: 600; }
 .repo-subtitle { color: var(--muted); font-size: 12px; }
-.build-badge { display: inline-flex; align-items: center; min-height: 24px; padding: .1rem .5rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface-muted); color: var(--muted); font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .explorer {
+  --sidebar-width: 25%;
+
   flex: 1 1 auto;
   display: grid;
-  grid-template-columns: minmax(320px, 36%) minmax(0, 1fr);
+
+
+  grid-template-columns:
+    minmax(220px, var(--sidebar-width))
+    1px
+    minmax(320px, 1fr);
+
   height: auto;
   min-height: 0;
   border: 1px solid var(--border);
@@ -1752,15 +1785,63 @@ main {
   background: var(--surface);
   overflow: hidden;
 }
+
 .sidebar {
   min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border-right: 1px solid var(--border);
+  border-right: 0;
   background: var(--surface);
 }
+
+.explorer-splitter {
+  position: relative;
+  z-index: 2;
+  justify-self: center;
+  align-self: stretch;
+
+  width: 7px;
+  min-width: 7px;
+
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.explorer-splitter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+
+  width: 1px;
+  background: var(--border);
+  transform: translateX(-50%);
+  transition: background-color 80ms ease;
+}
+
+.explorer-splitter:hover::before,
+.explorer-splitter.dragging::before {
+  background: #8c959f;
+}
+
+.explorer-splitter:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+body.resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing-sidebar iframe {
+  pointer-events: none;
+}
+
 .sidebar-toolbar { padding: .7rem; border-bottom: 1px solid var(--border); background: var(--surface-muted); }
 .breadcrumbs { display: flex; align-items: center; gap: .28rem; flex-wrap: wrap; margin-bottom: .55rem; }
 .breadcrumbs button {
@@ -1967,6 +2048,7 @@ main {
   body { height: auto; min-height: 100vh; overflow: auto; }
   main { height: auto; min-height: 0; overflow: visible; padding: .65rem 0 1rem; }
   .explorer { grid-template-columns: 1fr; height: auto; min-height: 0; }
+  .explorer-splitter { display: none; }
   .sidebar { max-height: 520px; border-right: 0; border-bottom: 1px solid var(--border); }
   .preview-body, .welcome, .code-view { min-height: 520px; }
 }
@@ -1991,7 +2073,9 @@ main {
       <h1 class="repo-title">artifacts</h1>
       <div class="repo-subtitle">Expand folders into a file tree on the left and preview files on the right.</div>
     </div>
-    <div style="display:flex;align-items:center;gap:.5rem"><span class="build-badge">__UI_BUILD__</span><button id="allFiles" type="button">All files</button></div>
+    <div>
+      <button id="allFiles" type="button">All files</button>
+    </div>
   </div>
   <section class="explorer" aria-label="Artifact explorer">
     <aside class="sidebar">
@@ -2001,6 +2085,18 @@ main {
       </div>
       <div id="entryList" aria-live="polite"></div>
     </aside>
+
+    <div
+      id="explorerSplitter"
+      class="explorer-splitter"
+      role="separator"
+      aria-label="Resize folder browser"
+      aria-orientation="vertical"
+      aria-valuemin="220"
+      tabindex="0"
+      title="Drag to resize the folder browser. Double-click to reset."
+    ></div>
+
     <section class="preview">
       <div class="preview-header">
         <div class="preview-title"><strong id="previewName">Select a file</strong><span id="previewMeta">File contents will appear here.</span></div>
@@ -2030,6 +2126,143 @@ const previewName = document.getElementById('previewName');
 const previewMeta = document.getElementById('previewMeta');
 const previewActions = document.getElementById('previewActions');
 const previewBody = document.getElementById('previewBody');
+
+const explorer = document.querySelector('.explorer');
+const sidebar = explorer.querySelector('.sidebar');
+const explorerSplitter = document.getElementById('explorerSplitter');
+
+const MIN_SIDEBAR_WIDTH = 220;
+const MIN_PREVIEW_WIDTH = 320;
+const DIVIDER_LAYOUT_WIDTH = 1;
+
+let resizedSidebarWidth = null;
+let dragStartX = 0;
+let dragStartWidth = 0;
+
+function explorerResizeEnabled() {
+  return window.matchMedia('(min-width: 851px)').matches;
+}
+
+function setSidebarWidth(width) {
+  if (!explorerResizeEnabled()) return;
+
+  const explorerWidth = explorer.getBoundingClientRect().width;
+  const maximumWidth = Math.max(
+    MIN_SIDEBAR_WIDTH,
+    explorerWidth - MIN_PREVIEW_WIDTH - DIVIDER_LAYOUT_WIDTH
+  );
+
+  const clampedWidth = Math.min(
+    Math.max(width, MIN_SIDEBAR_WIDTH),
+    maximumWidth
+  );
+
+  resizedSidebarWidth = clampedWidth;
+
+  explorer.style.setProperty(
+    '--sidebar-width',
+    `${clampedWidth}px`
+  );
+
+  explorerSplitter.setAttribute(
+    'aria-valuenow',
+    String(Math.round(clampedWidth))
+  );
+
+  explorerSplitter.setAttribute(
+    'aria-valuemax',
+    String(Math.round(maximumWidth))
+  );
+}
+
+function finishSidebarResize(event) {
+  explorerSplitter.classList.remove('dragging');
+  document.body.classList.remove('resizing-sidebar');
+
+  if (
+    event &&
+    explorerSplitter.hasPointerCapture(event.pointerId)
+  ) {
+    explorerSplitter.releasePointerCapture(event.pointerId);
+  }
+}
+
+explorerSplitter.addEventListener('pointerdown', event => {
+  if (!explorerResizeEnabled()) return;
+
+  event.preventDefault();
+
+  dragStartX = event.clientX;
+  dragStartWidth = sidebar.getBoundingClientRect().width;
+
+  explorerSplitter.classList.add('dragging');
+  document.body.classList.add('resizing-sidebar');
+  explorerSplitter.setPointerCapture(event.pointerId);
+});
+
+explorerSplitter.addEventListener('pointermove', event => {
+  if (!explorerSplitter.hasPointerCapture(event.pointerId)) return;
+
+  const movement = event.clientX - dragStartX;
+  setSidebarWidth(dragStartWidth + movement);
+});
+
+explorerSplitter.addEventListener(
+  'pointerup',
+  finishSidebarResize
+);
+
+explorerSplitter.addEventListener(
+  'pointercancel',
+  finishSidebarResize
+);
+
+explorerSplitter.addEventListener(
+  'lostpointercapture',
+  () => {
+    explorerSplitter.classList.remove('dragging');
+    document.body.classList.remove('resizing-sidebar');
+  }
+);
+
+explorerSplitter.addEventListener('dblclick', () => {
+  resizedSidebarWidth = null;
+  explorer.style.removeProperty('--sidebar-width');
+});
+
+explorerSplitter.addEventListener('keydown', event => {
+  if (!explorerResizeEnabled()) return;
+
+  const currentWidth =
+    resizedSidebarWidth ??
+    sidebar.getBoundingClientRect().width;
+
+  const increment = event.shiftKey ? 50 : 10;
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    setSidebarWidth(currentWidth - increment);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    setSidebarWidth(currentWidth + increment);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    setSidebarWidth(MIN_SIDEBAR_WIDTH);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    setSidebarWidth(Number.MAX_SAFE_INTEGER);
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (
+    explorerResizeEnabled() &&
+    resizedSidebarWidth !== null
+  ) {
+    setSidebarWidth(resizedSidebarWidth);
+  }
+});
+
 let currentPreviewData = null;
 let markdownViewMode = 'preview';
 
