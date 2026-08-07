@@ -673,7 +673,7 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary)
 }
 .header-row {
   display: flex;
-  width: min(1600px, calc(100% - 32px));
+  width: min(1800px, calc(100% - 32px));
   margin: 0 auto;
   align-items: center;
   justify-content: space-between;
@@ -2025,7 +2025,7 @@ header {
 }
 
 .header-row {
-  width: min(1600px, calc(100% - 32px));
+  width: min(1800px, calc(100% - 32px));
   min-height: 56px;
   margin: 0 auto;
   display: flex;
