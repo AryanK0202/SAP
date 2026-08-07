@@ -57,14 +57,28 @@ def print_checks(catalog: dict[str, Any], category: str | None, automated_only: 
     if not checks:
         print("(no checks match that filter)")
         return
-    rows = [("ID", "SCOPE", "COMPONENT", "CATEGORY", "TAG", "TASK FILE")]
+    rows = [
+        (
+            "ID",
+            "SCOPE",
+            "COMPONENT",
+            "CATEGORY",
+            "GROUP",
+            "CONTRIBUTOR",
+            "TAG",
+            "TASK FILE",
+        )
+    ]
+
     for check in checks:
         rows.append(
             (
                 check["id"],
                 check.get("scope", "-"),
                 check.get("component", "-"),
-                check["category"],
+                check.get("category", "-"),
+                check.get("group", "-"),
+                check.get("contributor", "-"),
                 check.get("ansible_tag") or "-",
                 check.get("task_file") or "-",
             )

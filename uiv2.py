@@ -335,18 +335,26 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
             selectable_check_ids.add(check_id)
             tag_to_ids.setdefault(str(tag), []).append(check_id)
         checks.append(
-            {
-                "id": check_id,
-                "category": str(raw.get("category") or "Uncategorized"),
-                "task": str(raw.get("task") or ""),
-                "scope": str(raw.get("scope") or ""),
-                "component": str(raw.get("component") or ""),
-                "ansible_tag": str(tag or ""),
-                "implementation_status": str(raw.get("implementation_status") or ""),
-                "selectable": selectable,
-            }
+          {
+              "id": check_id,
+              "category": str(raw.get("category") or "Uncategorized"),
+              "group": str(raw.get("group") or "Uncategorized"),
+              "contributor": str(raw.get("contributor") or "Unknown"),
+              "task": str(raw.get("task") or ""),
+              "scope": str(raw.get("scope") or ""),
+              "component": str(raw.get("component") or ""),
+              "ansible_tag": str(tag or ""),
+              "implementation_status": str(raw.get("implementation_status") or ""),
+              "selectable": selectable,
+          }
+      )
+    checks.sort(
+        key=lambda item: (
+            item["category"].lower(),
+            item["group"].lower(),
+            item["id"].lower(),
         )
-    checks.sort(key=lambda item: (item["category"].lower(), item["id"].lower()))
+    )
 
     profiles: dict[str, list[str]] = {}
     for name, profile in profiles_raw.items():
@@ -655,7 +663,7 @@ select {
 }
 input[type="search"] { min-width: min(22rem, 100%); }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); vertical-align: -2px; }
-.app-shell { width: min(1600px, calc(100% - 32px)); margin: 0 auto 2rem; }
+.app-shell { width: min(1800px, calc(100% - 32px)); margin: 0 auto 2rem; }
 .app-header {
   margin: 0 0 .9rem;
   padding: .55rem 0;
@@ -831,6 +839,48 @@ tbody tr:hover { background: #f1f6ff; }
 td:first-child, th:first-child { text-align: center; width: 64px; }
 .muted { color: var(--muted); }
 .hidden { display: none !important; }
+.check-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 0;
+  margin: 0 0 .75rem;
+  border-bottom: 1px solid var(--border-strong);
+  overflow-x: auto;
+}
+
+.check-tab {
+  min-height: 42px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.check-tab:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.check-tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  background: #f8fafc;
+}
+
+.check-tab-panel {
+  display: grid;
+  gap: .6rem;
+}
+
+.check-tab-empty {
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+  text-align: center;
+}
 .check-groups {
   display: grid;
   gap: .6rem;
@@ -1077,7 +1127,7 @@ pre {
     <div class="toolbar">
       <div class="toolbar-left">
         <label class="control"><span class="control-label">Profile</span><select id="profile"><option value="">Custom selection</option></select></label>
-        <label class="control grow"><span class="control-label">Search checks</span><input id="checkSearch" type="search" placeholder="Category, check ID, tag, or description"></label>
+        <label class="control grow"><span class="control-label">Search checks</span><input id="checkSearch" type="search" placeholder="Group, contributor, check ID, tag, or description"></label>
         <label><input id="showUnavailable" type="checkbox"> Show unavailable checks</label>
       </div>
       <div class="toolbar-right visibility-actions">
@@ -1085,6 +1135,13 @@ pre {
         <button type="button" id="clearVisibleChecks">Clear visible</button>
       </div>
     </div>
+    <div
+      id="checkTabs"
+      class="check-tabs"
+      role="tablist"
+      aria-label="Validation category"
+    ></div>
+
     <div id="checks" class="check-groups"></div>
   </div>
 </section>
@@ -1179,6 +1236,15 @@ pre {
 let config = null;
 let systemSort = {key: 'server_id', asc: true};
 
+const CHECK_CATEGORIES = [
+  'Build Validation',
+  'Prepatch',
+  'Health',
+  'Availability'
+];
+
+let activeCheckCategory = 'Build Validation';
+
 function el(id) { return document.getElementById(id); }
 function selectedValues(selector) { return [...document.querySelectorAll(selector + ':checked')].map(x => x.value); }
 function uniqueSorted(values) { return [...new Set(values.filter(Boolean))].sort((a,b) => a.localeCompare(b)); }
@@ -1252,78 +1318,278 @@ function applySystemFilters() {
   updateCounts();
 }
 
-function groupChecks() {
+function checksForCategory(category) {
+  return config.checks.filter(check => check.category === category);
+}
+
+function groupChecks(checks) {
   const groups = new Map();
-  for (const check of config.checks) {
-    if (!groups.has(check.category)) groups.set(check.category, []);
-    groups.get(check.category).push(check);
+
+  for (const check of checks) {
+    const group = check.group || 'Uncategorized';
+
+    if (!groups.has(group)) {
+      groups.set(group, []);
+    }
+
+    groups.get(group).push(check);
   }
+
   return groups;
 }
 
+function renderCheckTabs() {
+  const tabs = el('checkTabs');
+  tabs.textContent = '';
+
+  for (const category of CHECK_CATEGORIES) {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'check-tab';
+    button.dataset.category = category;
+    button.setAttribute('role', 'tab');
+
+    const available = checksForCategory(category)
+      .filter(check => check.selectable)
+      .length;
+
+    button.textContent = `${category} (${available})`;
+
+    button.addEventListener('click', () => {
+      setActiveCheckCategory(category);
+    });
+
+    tabs.appendChild(button);
+  }
+}
+
+function setActiveCheckCategory(category) {
+  activeCheckCategory = category;
+
+  for (const button of el('checkTabs').querySelectorAll('.check-tab')) {
+    const active = button.dataset.category === category;
+
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  }
+
+  for (const panel of el('checks').querySelectorAll('.check-tab-panel')) {
+    panel.classList.toggle(
+      'hidden',
+      panel.dataset.category !== category
+    );
+  }
+
+  applyCheckFilters();
+}
+
 function renderChecks() {
+  renderCheckTabs();
+
   const container = el('checks');
   container.textContent = '';
-  for (const [category, checks] of groupChecks()) {
-    const details = document.createElement('details');
-    details.open = true;
-    details.className = 'check-category';
-    details.dataset.category = category.toLowerCase();
-    const summary = document.createElement('summary');
-    const categoryBox = document.createElement('input');
-    categoryBox.type = 'checkbox'; categoryBox.className = 'categoryChoice';
-    categoryBox.setAttribute('aria-label', `Select visible checks in ${category}`);
-    categoryBox.addEventListener('click', event => event.stopPropagation());
-    categoryBox.addEventListener('change', () => {
-      for (const box of details.querySelectorAll('.checkChoice:not(:disabled)')) {
-        const row = box.closest('tr');
-        if (!row.classList.contains('hidden')) box.checked = categoryBox.checked;
-      }
-      el('profile').value = '';
-      updateCounts();
-    });
-    const categoryName = document.createElement('span');
-    categoryName.textContent = category;
-    const categoryMeta = document.createElement('span');
-    categoryMeta.className = 'muted';
-    categoryMeta.style.fontWeight = '600';
-    categoryMeta.textContent = `${checks.filter(x => x.selectable).length} available`;
-    summary.append(categoryBox, categoryName, categoryMeta);
-    details.appendChild(summary);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'table-wrap check-table-wrap';
-    const table = document.createElement('table');
-    table.className = 'check-table';
-    table.innerHTML = '<colgroup><col style="width:52px"><col style="width:210px"><col style="width:195px"><col style="width:145px"><col style="width:135px"><col style="width:135px"><col></colgroup><thead><tr><th>Select</th><th>Check ID</th><th>Tag</th><th>Component</th><th>Scope</th><th>Status</th><th>Description</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    for (const check of checks) {
-      const tr = document.createElement('tr');
-      tr.dataset.search = [check.category, check.id, check.ansible_tag, check.component, check.scope, check.task, check.implementation_status].join(' ').toLowerCase();
-      tr.dataset.selectable = String(check.selectable);
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox'; checkbox.className = 'checkChoice'; checkbox.value = check.id;
-      checkbox.disabled = !check.selectable;
-      checkbox.setAttribute('aria-label', `Select ${check.id}`);
-      checkbox.addEventListener('change', () => { el('profile').value = ''; updateCounts(); });
-      const values = [checkbox, check.id, check.ansible_tag || '—', check.component || '—', check.scope || '—'];
-      for (const value of values) {
-        const td = document.createElement('td');
-        if (value instanceof Node) td.appendChild(value); else td.textContent = value;
-        tr.appendChild(td);
-      }
-      const statusCell = document.createElement('td');
-      statusCell.appendChild(statusBadge(check.selectable ? 'Available' : (check.implementation_status || 'Unavailable')));
-      tr.appendChild(statusCell);
-      const descriptionCell = document.createElement('td');
-      descriptionCell.textContent = check.task || '—';
-      tr.appendChild(descriptionCell);
-      tbody.appendChild(tr);
+  for (const category of CHECK_CATEGORIES) {
+    const panel = document.createElement('div');
+
+    panel.className = 'check-tab-panel';
+    panel.dataset.category = category;
+    panel.setAttribute('role', 'tabpanel');
+
+    const categoryChecks = checksForCategory(category);
+
+    if (categoryChecks.length === 0) {
+      const empty = document.createElement('div');
+
+      empty.className = 'check-tab-empty';
+      empty.textContent = `No ${category} checks have been added yet.`;
+
+      panel.appendChild(empty);
+      container.appendChild(panel);
+      continue;
     }
-    table.appendChild(tbody); wrap.appendChild(table); details.appendChild(wrap); container.appendChild(details);
+
+    for (const [group, checks] of groupChecks(categoryChecks)) {
+      const details = document.createElement('details');
+
+      details.open = true;
+      details.className = 'check-category';
+      details.dataset.group = group.toLowerCase();
+
+      const summary = document.createElement('summary');
+
+      const groupBox = document.createElement('input');
+
+      groupBox.type = 'checkbox';
+      groupBox.className = 'groupChoice';
+
+      groupBox.setAttribute(
+        'aria-label',
+        `Select visible checks in ${group}`
+      );
+
+      groupBox.addEventListener('click', event => {
+        event.stopPropagation();
+      });
+
+      groupBox.addEventListener('change', () => {
+        for (
+          const box
+          of details.querySelectorAll('.checkChoice:not(:disabled)')
+        ) {
+          const row = box.closest('tr');
+
+          if (!row.classList.contains('hidden')) {
+            box.checked = groupBox.checked;
+          }
+        }
+
+        el('profile').value = '';
+        updateCounts();
+      });
+
+      const groupName = document.createElement('span');
+      groupName.textContent = group;
+
+      const groupMeta = document.createElement('span');
+
+      groupMeta.className = 'muted';
+      groupMeta.style.fontWeight = '600';
+
+      groupMeta.textContent =
+        `${checks.filter(check => check.selectable).length} available`;
+
+      summary.append(
+        groupBox,
+        groupName,
+        groupMeta
+      );
+
+      details.appendChild(summary);
+
+      const wrap = document.createElement('div');
+
+      wrap.className = 'table-wrap check-table-wrap';
+
+      const table = document.createElement('table');
+
+      table.className = 'check-table';
+
+      table.innerHTML = `
+        <colgroup>
+          <col style="width:52px">
+          <col style="width:195px">
+          <col style="width:195px">
+          <col style="width:130px">
+          <col style="width:115px">
+          <col style="width:125px">
+          <col style="width:160px">
+          <col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Check ID</th>
+            <th>Tag</th>
+            <th>Component</th>
+            <th>Scope</th>
+            <th>Contributor</th>
+            <th>Status</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+      `;
+
+      const tbody = document.createElement('tbody');
+
+      for (const check of checks) {
+        const tr = document.createElement('tr');
+
+        tr.dataset.search = [
+          check.category,
+          check.group,
+          check.contributor,
+          check.id,
+          check.ansible_tag,
+          check.component,
+          check.scope,
+          check.task,
+          check.implementation_status
+        ].join(' ').toLowerCase();
+
+        tr.dataset.selectable = String(check.selectable);
+
+        const checkbox = document.createElement('input');
+
+        checkbox.type = 'checkbox';
+        checkbox.className = 'checkChoice';
+        checkbox.value = check.id;
+        checkbox.disabled = !check.selectable;
+
+        checkbox.setAttribute(
+          'aria-label',
+          `Select ${check.id}`
+        );
+
+        checkbox.addEventListener('change', () => {
+          el('profile').value = '';
+          updateCounts();
+        });
+
+        const values = [
+          checkbox,
+          check.id,
+          check.ansible_tag || '—',
+          check.component || '—',
+          check.scope || '—',
+          check.contributor || '—'
+        ];
+
+        for (const value of values) {
+          const td = document.createElement('td');
+
+          if (value instanceof Node) {
+            td.appendChild(value);
+          } else {
+            td.textContent = value;
+          }
+
+          tr.appendChild(td);
+        }
+
+        const statusCell = document.createElement('td');
+
+        statusCell.appendChild(
+          statusBadge(
+            check.selectable
+              ? 'Available'
+              : (check.implementation_status || 'Unavailable')
+          )
+        );
+
+        tr.appendChild(statusCell);
+
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = check.task || '—';
+
+        tr.appendChild(descriptionCell);
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      details.appendChild(wrap);
+      panel.appendChild(details);
+    }
+
+    container.appendChild(panel);
   }
+
   installCheckTableScrollSync();
-  applyCheckFilters();
+
+  setActiveCheckCategory(activeCheckCategory);
 }
 
 let checkScrollSyncActive = false;
@@ -1363,27 +1629,75 @@ function setProfile(name) {
 }
 
 function updateCounts() {
-  const selectedSystems = selectedValues('.systemChoice');
-  const visibleSystems = [...document.querySelectorAll('#systemsTable tbody tr:not(.hidden)')].length;
-  el('systemCount').textContent = `${selectedSystems.length} selected / ${visibleSystems} visible`;
   const selectedChecks = selectedValues('.checkChoice');
-  const visibleChecks = [...document.querySelectorAll('#checks tbody tr:not(.hidden)')].length;
-  el('checkCount').textContent = `${selectedChecks.length} selected / ${visibleChecks} visible`;
+
+  const activePanel = [
+    ...document.querySelectorAll('.check-tab-panel')
+  ].find(
+    panel => panel.dataset.category === activeCheckCategory
+  );
+
+  const visibleChecks = activePanel
+    ? [...activePanel.querySelectorAll('tbody tr')]
+        .filter(row => !row.classList.contains('hidden'))
+        .length
+    : 0;
+
+  el('checkCount').textContent =
+    `${selectedChecks.length} selected / ${visibleChecks} visible`;
+
+  // Update each group's "select all" checkbox.
   for (const details of document.querySelectorAll('#checks details')) {
-    const boxes = [...details.querySelectorAll('.checkChoice:not(:disabled)')];
-    const visible = boxes.filter(box => !box.closest('tr').classList.contains('hidden'));
-    const chosen = visible.filter(box => box.checked).length;
-    const category = details.querySelector('.categoryChoice');
-    category.checked = visible.length > 0 && chosen === visible.length;
-    category.indeterminate = chosen > 0 && chosen < visible.length;
+    const boxes = [
+      ...details.querySelectorAll('.checkChoice:not(:disabled)')
+    ];
+
+    const visible = boxes.filter(
+      box => !box.closest('tr').classList.contains('hidden')
+    );
+
+    const chosen = visible.filter(
+      box => box.checked
+    ).length;
+
+    const group = details.querySelector('.groupChoice');
+
+    if (!group) {
+      continue;
+    }
+
+    group.checked =
+      visible.length > 0 &&
+      chosen === visible.length;
+
+    group.indeterminate =
+      chosen > 0 &&
+      chosen < visible.length;
   }
 }
 
 function setVisible(selector, checked) {
   for (const box of document.querySelectorAll(selector)) {
     const row = box.closest('tr');
-    if (!box.disabled && row && !row.classList.contains('hidden')) box.checked = checked;
+
+    if (!row || box.disabled || row.classList.contains('hidden')) {
+      continue;
+    }
+
+    if (selector === '.checkChoice') {
+      const panel = box.closest('.check-tab-panel');
+
+      if (
+        panel &&
+        panel.dataset.category !== activeCheckCategory
+      ) {
+        continue;
+      }
+    }
+
+    box.checked = checked;
   }
+
   updateCounts();
 }
 
