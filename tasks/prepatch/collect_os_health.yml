@@ -1,0 +1,394 @@
+---
+- name: "CHECK: CPU Load"
+  block:
+    - name: "COLLECT: CPU load averages"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json
+        import os
+
+        cpu_count = os.cpu_count() or 1
+        load_1, load_5, load_15 = os.getloadavg()
+        yellow = cpu_count * float(os.environ["LOAD_YELLOW_PER_CPU"])
+        red = cpu_count * float(os.environ["LOAD_RED_PER_CPU"])
+        status = "RED" if load_1 >= red else "YELLOW" if load_1 >= yellow else "GREEN"
+        print(json.dumps([{
+            "category": "Operating System",
+            "name": "CPU Load",
+            "status": status,
+            "observed": f"1m={load_1:.2f}, 5m={load_5:.2f}, 15m={load_15:.2f}",
+            "details": f"Logical CPUs: {cpu_count}.",
+            "source": "collect_os_health.yml",
+        }]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        LOAD_YELLOW_PER_CPU: "{{ prepatch_load_yellow_per_cpu }}"
+        LOAD_RED_PER_CPU: "{{ prepatch_load_red_per_cpu }}"
+      register: prepatch_cpu_load_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "STATUS: Add CPU load result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services
+            + (
+                prepatch_cpu_load_raw.stdout | from_json
+                if prepatch_cpu_load_raw.rc | default(1) | int == 0
+                   and prepatch_cpu_load_raw.stdout | default('') | trim | length > 0
+                else [{
+                  'category': 'Operating System',
+                  'name': 'CPU Load',
+                  'status': 'RED',
+                  'observed': 'collection failed',
+                  'details': prepatch_cpu_load_raw.stderr | default('No output', true) | trim,
+                  'source': 'collect_os_health.yml'
+                }]
+              )
+          }}
+  tags: [prepatch_cpu_load]
+
+- name: "CHECK: Memory Usage"
+  block:
+    - name: "COLLECT: Memory usage"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json
+        import os
+
+        meminfo = {}
+        with open("/proc/meminfo", encoding="utf-8") as handle:
+            for line in handle:
+                key, value = line.split(":", 1)
+                meminfo[key] = int(value.strip().split()[0])
+        total = meminfo.get("MemTotal", 0)
+        available = meminfo.get("MemAvailable", meminfo.get("MemFree", 0))
+        used_pct = ((total - available) / total * 100.0) if total else 100.0
+        yellow = float(os.environ["MEM_YELLOW"])
+        red = float(os.environ["MEM_RED"])
+        status = "RED" if used_pct >= red else "YELLOW" if used_pct >= yellow else "GREEN"
+        print(json.dumps([{
+            "category": "Operating System",
+            "name": "Memory Usage",
+            "status": status,
+            "observed": f"{used_pct:.1f}% used",
+            "details": f"Available memory: {available / 1024 / 1024:.1f} GiB.",
+            "source": "collect_os_health.yml",
+        }]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        MEM_YELLOW: "{{ prepatch_memory_yellow_percent }}"
+        MEM_RED: "{{ prepatch_memory_red_percent }}"
+      register: prepatch_memory_usage_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "STATUS: Add memory usage result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services
+            + (
+                prepatch_memory_usage_raw.stdout | from_json
+                if prepatch_memory_usage_raw.rc | default(1) | int == 0
+                   and prepatch_memory_usage_raw.stdout | default('') | trim | length > 0
+                else [{
+                  'category': 'Operating System',
+                  'name': 'Memory Usage',
+                  'status': 'RED',
+                  'observed': 'collection failed',
+                  'details': prepatch_memory_usage_raw.stderr | default('No output', true) | trim,
+                  'source': 'collect_os_health.yml'
+                }]
+              )
+          }}
+  tags: [prepatch_memory_usage]
+
+- name: "CHECK: Swap Usage"
+  block:
+    - name: "COLLECT: Swap usage"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json
+        import os
+
+        meminfo = {}
+        with open("/proc/meminfo", encoding="utf-8") as handle:
+            for line in handle:
+                key, value = line.split(":", 1)
+                meminfo[key] = int(value.strip().split()[0])
+        total = meminfo.get("SwapTotal", 0)
+        free = meminfo.get("SwapFree", 0)
+        if total:
+            used_pct = (total - free) / total * 100.0
+            yellow = float(os.environ["SWAP_YELLOW"])
+            red = float(os.environ["SWAP_RED"])
+            status = "RED" if used_pct >= red else "YELLOW" if used_pct >= yellow else "GREEN"
+            observed = f"{used_pct:.1f}% used"
+            details = f"Configured swap: {total / 1024 / 1024:.1f} GiB."
+        else:
+            status = "GREEN"
+            observed = "no swap configured"
+            details = "No swap usage pressure was detected because swap is not configured."
+        print(json.dumps([{
+            "category": "Operating System",
+            "name": "Swap Usage",
+            "status": status,
+            "observed": observed,
+            "details": details,
+            "source": "collect_os_health.yml",
+        }]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        SWAP_YELLOW: "{{ prepatch_swap_yellow_percent }}"
+        SWAP_RED: "{{ prepatch_swap_red_percent }}"
+      register: prepatch_swap_usage_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "STATUS: Add swap usage result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services
+            + (
+                prepatch_swap_usage_raw.stdout | from_json
+                if prepatch_swap_usage_raw.rc | default(1) | int == 0
+                   and prepatch_swap_usage_raw.stdout | default('') | trim | length > 0
+                else [{
+                  'category': 'Operating System',
+                  'name': 'Swap Usage',
+                  'status': 'RED',
+                  'observed': 'collection failed',
+                  'details': prepatch_swap_usage_raw.stderr | default('No output', true) | trim,
+                  'source': 'collect_os_health.yml'
+                }]
+              )
+          }}
+  tags: [prepatch_swap_usage]
+
+- name: "CHECK: Root filesystem"
+  block:
+    - name: "COLLECT: Root filesystem usage and mount details"
+      ansible.builtin.shell: &filesystem_check_script |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json
+        import os
+        import shutil
+        import subprocess
+
+        name = os.environ["CHECK_NAME"]
+        path = os.environ["CHECK_PATH"]
+        required = os.environ.get("CHECK_REQUIRED", "false").lower() == "true"
+        require_mount = os.environ.get("REQUIRE_MOUNT", "false").lower() == "true"
+        yellow = float(os.environ["DISK_YELLOW"])
+        red = float(os.environ["DISK_RED"])
+        records = []
+        if not os.path.exists(path):
+            if required:
+                records.append({
+                    "category": "Filesystems", "name": name, "status": "RED",
+                    "observed": "path missing", "details": f"Required path {path} does not exist.",
+                    "source": "collect_os_health.yml",
+                })
+            print(json.dumps(records))
+            raise SystemExit(0)
+        usage = shutil.disk_usage(path)
+        used_pct = (usage.used / usage.total * 100.0) if usage.total else 100.0
+        status = "RED" if used_pct >= red else "YELLOW" if used_pct >= yellow else "GREEN"
+        result = subprocess.run(
+            ["findmnt", "-n", "-o", "SOURCE,TARGET,FSTYPE,OPTIONS", "--target", path],
+            text=True, capture_output=True, check=False,
+        )
+        fields = result.stdout.strip().split(None, 3)
+        source = fields[0] if len(fields) > 0 else "unknown"
+        target = fields[1] if len(fields) > 1 else "unknown"
+        fstype = fields[2] if len(fields) > 2 else "unknown"
+        options = fields[3] if len(fields) > 3 else ""
+        details = (
+            f"Path={path}; mount={target}; device={source}; type={fstype}; "
+            f"free={usage.free / 1024**3:.1f} GiB; total={usage.total / 1024**3:.1f} GiB."
+        )
+        if "ro" in options.split(","):
+            status = "RED"
+            details += " Filesystem is mounted read-only."
+        if require_mount and target != path:
+            status = "RED"
+            details += f" A dedicated mount is required at {path}, but the active mount target is {target}."
+        records.append({
+            "category": "Filesystems", "name": name, "status": status,
+            "observed": f"{used_pct:.1f}% used", "details": details,
+            "source": "collect_os_health.yml",
+        })
+        print(json.dumps(records))
+        PY
+      args: &filesystem_check_args
+        executable: /bin/bash
+      environment:
+        CHECK_NAME: "Root filesystem (/)"
+        CHECK_PATH: "/"
+        CHECK_REQUIRED: "true"
+        REQUIRE_MOUNT: "false"
+        DISK_YELLOW: "{{ prepatch_disk_yellow_percent }}"
+        DISK_RED: "{{ prepatch_disk_red_percent }}"
+      register: prepatch_root_filesystem_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "STATUS: Add root filesystem result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services
+            + (
+                prepatch_root_filesystem_raw.stdout | from_json
+                if prepatch_root_filesystem_raw.rc | default(1) | int == 0
+                   and prepatch_root_filesystem_raw.stdout | default('') | trim | length > 0
+                else [{
+                  'category': 'Filesystems', 'name': 'Root filesystem (/)', 'status': 'RED',
+                  'observed': 'collection failed',
+                  'details': prepatch_root_filesystem_raw.stderr | default('No output', true) | trim,
+                  'source': 'collect_os_health.yml'
+                }]
+              )
+          }}
+  tags: [prepatch_root_filesystem]
+
+- name: "CHECK: SAP filesystem"
+  block:
+    - name: "COLLECT: SAP filesystem usage and mount details"
+      ansible.builtin.shell: *filesystem_check_script
+      args: *filesystem_check_args
+      environment:
+        CHECK_NAME: "SAP filesystem"
+        CHECK_PATH: "/usr/sap"
+        CHECK_REQUIRED: "true"
+        REQUIRE_MOUNT: "false"
+        DISK_YELLOW: "{{ prepatch_disk_yellow_percent }}"
+        DISK_RED: "{{ prepatch_disk_red_percent }}"
+      register: prepatch_sap_filesystem_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add SAP filesystem result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_sap_filesystem_raw.stdout | from_json if prepatch_sap_filesystem_raw.rc | default(1) | int == 0 and prepatch_sap_filesystem_raw.stdout | default('') | trim | length > 0 else [{'category':'Filesystems','name':'SAP filesystem','status':'RED','observed':'collection failed','details':prepatch_sap_filesystem_raw.stderr | default('No output', true) | trim,'source':'collect_os_health.yml'}]) }}
+  tags: [prepatch_sap_filesystem]
+
+- name: "CHECK: HANA data filesystem"
+  block:
+    - name: "COLLECT: HANA data filesystem usage and mount details"
+      ansible.builtin.shell: *filesystem_check_script
+      args: *filesystem_check_args
+      environment:
+        CHECK_NAME: "HANA data filesystem"
+        CHECK_PATH: "{{ prepatch_hana_data_path }}"
+        CHECK_REQUIRED: "true"
+        REQUIRE_MOUNT: "false"
+        DISK_YELLOW: "{{ prepatch_disk_yellow_percent }}"
+        DISK_RED: "{{ prepatch_disk_red_percent }}"
+      register: prepatch_hana_data_filesystem_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add HANA data filesystem result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_hana_data_filesystem_raw.stdout | from_json if prepatch_hana_data_filesystem_raw.rc | default(1) | int == 0 and prepatch_hana_data_filesystem_raw.stdout | default('') | trim | length > 0 else [{'category':'Filesystems','name':'HANA data filesystem','status':'RED','observed':'collection failed','details':prepatch_hana_data_filesystem_raw.stderr | default('No output', true) | trim,'source':'collect_os_health.yml'}]) }}
+  tags: [prepatch_hana_data_filesystem]
+
+- name: "CHECK: HANA log filesystem"
+  block:
+    - name: "COLLECT: HANA log filesystem usage and mount details"
+      ansible.builtin.shell: *filesystem_check_script
+      args: *filesystem_check_args
+      environment:
+        CHECK_NAME: "HANA log filesystem"
+        CHECK_PATH: "{{ prepatch_hana_log_path }}"
+        CHECK_REQUIRED: "true"
+        REQUIRE_MOUNT: "false"
+        DISK_YELLOW: "{{ prepatch_disk_yellow_percent }}"
+        DISK_RED: "{{ prepatch_disk_red_percent }}"
+      register: prepatch_hana_log_filesystem_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add HANA log filesystem result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_hana_log_filesystem_raw.stdout | from_json if prepatch_hana_log_filesystem_raw.rc | default(1) | int == 0 and prepatch_hana_log_filesystem_raw.stdout | default('') | trim | length > 0 else [{'category':'Filesystems','name':'HANA log filesystem','status':'RED','observed':'collection failed','details':prepatch_hana_log_filesystem_raw.stderr | default('No output', true) | trim,'source':'collect_os_health.yml'}]) }}
+  tags: [prepatch_hana_log_filesystem]
+
+- name: "CHECK: HANA shared filesystem"
+  block:
+    - name: "COLLECT: HANA shared filesystem usage and mount details"
+      ansible.builtin.shell: *filesystem_check_script
+      args: *filesystem_check_args
+      environment:
+        CHECK_NAME: "HANA shared filesystem"
+        CHECK_PATH: "{{ prepatch_hana_shared_path }}"
+        CHECK_REQUIRED: "true"
+        REQUIRE_MOUNT: "false"
+        DISK_YELLOW: "{{ prepatch_disk_yellow_percent }}"
+        DISK_RED: "{{ prepatch_disk_red_percent }}"
+      register: prepatch_hana_shared_filesystem_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add HANA shared filesystem result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_hana_shared_filesystem_raw.stdout | from_json if prepatch_hana_shared_filesystem_raw.rc | default(1) | int == 0 and prepatch_hana_shared_filesystem_raw.stdout | default('') | trim | length > 0 else [{'category':'Filesystems','name':'HANA shared filesystem','status':'RED','observed':'collection failed','details':prepatch_hana_shared_filesystem_raw.stderr | default('No output', true) | trim,'source':'collect_os_health.yml'}]) }}
+  tags: [prepatch_hana_shared_filesystem]
+
+- name: "CHECK: Failed systemd Units"
+  block:
+    - name: "COLLECT: Failed systemd units"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json
+        import os
+        import shutil
+        import subprocess
+
+        critical = set(json.loads(os.environ.get("CRITICAL_UNITS_JSON", "[]")))
+        systemctl = shutil.which("systemctl")
+        if systemctl:
+            result = subprocess.run([systemctl, "--failed", "--no-legend", "--plain"], text=True, capture_output=True, check=False)
+            lines = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+            names = {line.split()[0] for line in lines if line.split()}
+            critical_failed = sorted(names.intersection(critical))
+            status = "RED" if critical_failed else "YELLOW" if lines or result.returncode != 0 else "GREEN"
+            observed = f"{len(lines)} failed unit(s)"
+            details = "; ".join(lines[:10]) if lines else (result.stderr.strip() or "No failed units reported.")
+        else:
+            status = "YELLOW"
+            observed = "systemctl unavailable"
+            details = "Failed service status could not be collected."
+        print(json.dumps([{
+            "category": "Operating System", "name": "Failed systemd Units", "status": status,
+            "observed": observed, "details": details, "source": "collect_os_health.yml",
+        }]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        CRITICAL_UNITS_JSON: "{{ prepatch_critical_systemd_units | default([]) | to_json }}"
+      register: prepatch_failed_systemd_units_raw
+      changed_when: false
+      failed_when: false
+
+    - name: "STATUS: Add failed systemd units result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_failed_systemd_units_raw.stdout | from_json if prepatch_failed_systemd_units_raw.rc | default(1) | int == 0 and prepatch_failed_systemd_units_raw.stdout | default('') | trim | length > 0 else [{'category':'Operating System','name':'Failed systemd Units','status':'RED','observed':'collection failed','details':prepatch_failed_systemd_units_raw.stderr | default('No output', true) | trim,'source':'collect_os_health.yml'}]) }}
+  tags: [prepatch_failed_systemd_units]

@@ -1,0 +1,104 @@
+---
+- name: "CHECK: Collect active HANA alerts"
+  ansible.builtin.shell: |
+    set -o pipefail
+    "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+    import json
+    import os
+    import re
+    import subprocess
+
+    hdbsql = os.environ["HDBSQL_PATH"]
+    userstore_key = os.environ.get("HDBSQL_KEY", "").strip()
+    required = os.environ.get("ALERT_CHECK_REQUIRED", "false").lower() == "true"
+    unavailable_status = "RED" if required else "YELLOW"
+
+    record = {
+        "category": "HANA Health",
+        "name": "Active HANA Alerts",
+        "status": unavailable_status,
+        "observed": "not checked",
+        "details": "",
+        "source": "collect_hana_alerts.yml",
+    }
+
+    if not userstore_key:
+        record["details"] = "hana_hdbsql_userstore_key is not configured."
+        print(json.dumps([record]))
+        raise SystemExit(0)
+
+    if not (os.path.isfile(hdbsql) and os.access(hdbsql, os.X_OK)):
+        record["details"] = f"hdbsql is unavailable at {hdbsql}."
+        print(json.dumps([record]))
+        raise SystemExit(0)
+
+    sql = """
+    SELECT
+      CASE
+        WHEN SUM(CASE WHEN ALERT_RATING >= 4 THEN 1 ELSE 0 END) > 0 THEN 'RED'
+        WHEN SUM(CASE WHEN ALERT_RATING = 3 THEN 1 ELSE 0 END) > 0 THEN 'YELLOW'
+        ELSE 'GREEN'
+      END || '|' ||
+      TO_VARCHAR(COUNT(*)) || ' medium-or-higher active alert(s)' || '|' ||
+      'High or error=' || TO_VARCHAR(SUM(CASE WHEN ALERT_RATING >= 4 THEN 1 ELSE 0 END)) ||
+      ', medium=' || TO_VARCHAR(SUM(CASE WHEN ALERT_RATING = 3 THEN 1 ELSE 0 END))
+    FROM "_SYS_STATISTICS"."STATISTICS_CURRENT_ALERTS"
+    WHERE ALERT_RATING >= 3
+    """
+
+    result = subprocess.run(
+        [hdbsql, "-U", userstore_key, "-A", "-x", sql],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    for line in result.stdout.splitlines():
+        candidate = line.strip().strip('"')
+        if re.match(r"^(GREEN|YELLOW|RED)\|", candidate):
+            status, observed, details = candidate.split("|", 2)
+            record.update(status=status, observed=observed, details=details)
+            break
+    else:
+        record["details"] = result.stderr.strip() or result.stdout.strip() or "Alert query returned no result."
+
+    print(json.dumps([record]))
+    PY
+  args:
+    executable: /bin/bash
+  environment:
+    HDBSQL_PATH: "{{ prepatch_hdbsql_path }}"
+    HDBSQL_KEY: "{{ hana_hdbsql_userstore_key }}"
+    ALERT_CHECK_REQUIRED: "{{ prepatch_require_alert_check | bool | ternary('true', 'false') }}"
+  become: true
+  become_user: "{{ sid_adm_user }}"
+  register: prepatch_hana_alerts_raw
+  changed_when: false
+  failed_when: false
+  no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+  tags: [prepatch_active_hana_alerts]
+
+- name: "STATUS: Add active HANA alert record"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + (
+            prepatch_hana_alerts_raw.stdout | from_json
+            if prepatch_hana_alerts_raw.rc | default(1) | int == 0
+               and prepatch_hana_alerts_raw.stdout | default('') | trim | length > 0
+            else [
+              {
+                'category': 'HANA Health',
+                'name': 'Active HANA Alerts',
+                'status': 'RED' if prepatch_require_alert_check | bool else 'YELLOW',
+                'observed': 'collection failed',
+                'details': prepatch_hana_alerts_raw.stderr
+                           | default(prepatch_hana_alerts_raw.stdout | default('No output'), true)
+                           | trim,
+                'source': 'collect_hana_alerts.yml'
+              }
+            ]
+          )
+      }}
+  no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+  tags: [prepatch_active_hana_alerts]

@@ -123,6 +123,11 @@
     - name: "LOAD: monitoring checks"
       ansible.builtin.import_tasks: tasks/build_validation/monitoring.yml
 
+    - name: "LOAD: Claire pre-patch readiness checks"
+      ansible.builtin.import_tasks: tasks/prepatch/main.yml
+      when: inventory_hostname in (groups.get('hana_db', []))
+      tags: [prepatch]
+
     # tasks/cloud.yml is intentionally not imported until an AWS DLM policy
     # ID and controller credentials are confirmed.
 
@@ -337,6 +342,10 @@
           - **Raw outputs:**
             {{ ('`' ~ e.raw_output_dir ~ '/`') if e.raw_output_dir else '-' }}
           {% endfor %}
+
+    - name: "REPORT: write consolidated Claire pre-patch summary when applicable"
+      ansible.builtin.import_tasks: tasks/prepatch/generate_prepatch_report.yml
+      tags: [prepatch]
 
     - name: "CLEANUP: remove manifest fragments"
       ansible.builtin.file:

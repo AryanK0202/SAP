@@ -1,0 +1,499 @@
+---
+- name: "STATUS: Add Ansible connectivity result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Connectivity',
+              'name': 'Ansible Connectivity',
+              'status': connectivity_status,
+              'observed': connectivity_observed,
+              'details': connectivity_details,
+              'source': 'collect_basic_info.yml'
+            }
+          ]
+      }}
+  vars:
+    connectivity_ok: >-
+      {{
+        login_check is defined
+        and login_check.ping | default('') == 'pong'
+      }}
+    connectivity_status: "{{ 'GREEN' if connectivity_ok else 'RED' }}"
+    connectivity_observed: "{{ 'pong' if connectivity_ok else 'no successful ping result' }}"
+    connectivity_details: >-
+      {{
+        'Ansible successfully contacted the host.'
+        if connectivity_ok
+        else 'The existing connectivity check did not return pong.'
+      }}
+  when: login_check is defined
+  tags: [prepatch_ansible_connectivity]
+
+- name: "STATUS: Add required SAP operating-system users"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'SAP OS Identity',
+              'name': 'OS user ' ~ item,
+              'status': user_status,
+              'observed': user_value,
+              'details': user_details,
+              'source': 'collect_users_groups.yml'
+            }
+          ]
+      }}
+  vars:
+    user_map: >-
+      {{
+        dict(user_id_check.stdout_lines | default([]) | map('split', ':', 1) | list)
+      }}
+    user_value: "{{ user_map[item] | default('NOT COLLECTED') }}"
+    user_required: "{{ item in (prepatch_required_users | default([])) }}"
+    user_missing: "{{ user_value in ['MISSING', 'NOT COLLECTED'] }}"
+    user_status: >-
+      {{
+        'RED' if user_missing and user_required
+        else 'YELLOW' if user_missing
+        else 'GREEN'
+      }}
+    user_details: >-
+      {{
+        'Required SAP operating-system user is missing.'
+        if user_missing and user_required
+        else 'Optional SAP operating-system user was not found.'
+        if user_missing
+        else 'User exists; observed UID is ' ~ user_value ~ '.'
+      }}
+  loop: "{{ validation_users | default([]) }}"
+  when: user_id_check is defined
+  tags: [prepatch_os_users]
+
+- name: "STATUS: Add required SAP operating-system groups"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'SAP OS Identity',
+              'name': 'OS group ' ~ item,
+              'status': group_status,
+              'observed': group_value,
+              'details': group_details,
+              'source': 'collect_users_groups.yml'
+            }
+          ]
+      }}
+  vars:
+    group_map: >-
+      {{
+        dict(group_id_check.stdout_lines | default([]) | map('split', ':', 1) | list)
+      }}
+    group_value: "{{ group_map[item] | default('NOT COLLECTED') }}"
+    group_required: "{{ item in (prepatch_required_groups | default([])) }}"
+    group_missing: "{{ group_value in ['MISSING', 'NOT COLLECTED'] }}"
+    group_status: >-
+      {{
+        'RED' if group_missing and group_required
+        else 'YELLOW' if group_missing
+        else 'GREEN'
+      }}
+    group_details: >-
+      {{
+        'Required SAP operating-system group is missing.'
+        if group_missing and group_required
+        else 'Optional SAP operating-system group was not found.'
+        if group_missing
+        else 'Group exists; observed GID is ' ~ group_value ~ '.'
+      }}
+  loop: "{{ validation_groups | default([]) }}"
+  when: group_id_check is defined
+  tags: [prepatch_os_groups]
+
+- name: "STATUS: Add required root cron patterns"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Scheduled Operations',
+              'name': 'Root cron pattern ' ~ item,
+              'status': cron_status,
+              'observed': cron_observed,
+              'details': cron_details,
+              'source': 'collect_cron.yml'
+            }
+          ]
+      }}
+  vars:
+    root_crontab_text: "{{ root_crontab_check.stdout | default('') | lower }}"
+    cron_found: "{{ item | lower in root_crontab_text }}"
+    cron_status: "{{ 'GREEN' if cron_found else 'YELLOW' }}"
+    cron_observed: "{{ 'found' if cron_found else 'missing' }}"
+    cron_details: >-
+      {{
+        'The expected root crontab pattern is present.'
+        if cron_found
+        else 'The expected root crontab pattern was not found; review before patching.'
+      }}
+  loop: "{{ cron_pattern_list | default([]) }}"
+  when: root_crontab_check is defined
+  tags: [prepatch_root_cron]
+
+- name: "STATUS: Add Diagnostic Agent installation result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'SAP Services',
+              'name': 'Diagnostic Agent',
+              'status': diagnostic_status,
+              'observed': diagnostic_observed,
+              'details': diagnostic_details,
+              'source': 'collect_diagnostic_agent.yml'
+            }
+          ]
+      }}
+  vars:
+    diagnostic_observed: "{{ diagnostic_agent_check.stdout | default('not collected') | trim }}"
+    diagnostic_installed: "{{ diagnostic_observed == 'installed' }}"
+    diagnostic_required: "{{ prepatch_diagnostic_agent_required | default(false) | bool }}"
+    diagnostic_status: >-
+      {{
+        'GREEN' if diagnostic_installed
+        else 'RED' if diagnostic_required
+        else 'YELLOW'
+      }}
+    diagnostic_details: >-
+      {{
+        'Diagnostic Agent installation indicators were found.'
+        if diagnostic_installed
+        else 'Diagnostic Agent was not detected. This check verifies installation indicators, not full runtime health.'
+      }}
+  when: diagnostic_agent_check is defined
+  tags: [prepatch_diagnostic_agent]
+
+- name: "STATUS: Add HANA version command result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'HANA Readiness',
+              'name': 'HANA Version Command',
+              'status': hana_version_status,
+              'observed': hana_version_observed,
+              'details': hana_version_details,
+              'source': 'collect_hana_info.yml'
+            }
+          ]
+      }}
+  vars:
+    hana_version_ok: >-
+      {{
+        hana_db_version_check.rc | default(1) | int == 0
+        and hana_db_version_number | default('') | trim | length > 0
+      }}
+    hana_version_status: "{{ 'GREEN' if hana_version_ok else 'RED' }}"
+    hana_version_observed: >-
+      {{
+        hana_db_version_number | default('not collected', true)
+      }}
+    hana_version_details: >-
+      {{
+        'HANA version was collected successfully.'
+        if hana_version_ok
+        else hana_db_version_check.stderr
+             | default(hana_db_version_check.stdout | default('HANA version could not be collected.'), true)
+             | trim
+      }}
+  when: hana_db_version_check is defined
+  tags: [prepatch_hana_version]
+
+- name: "STATUS: Add HANA plug-in inventory result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'HANA Readiness',
+              'name': 'HANA Plug-in Inventory',
+              'status': plugin_status,
+              'observed': plugin_observed,
+              'details': plugin_details,
+              'source': 'collect_hana_info.yml'
+            }
+          ]
+      }}
+  vars:
+    plugin_lines: "{{ hana_plugin_inventory_check.stdout_lines | default([]) }}"
+    plugin_missing: "{{ 'NO_PLUGIN_DIRECTORY_FOUND' in plugin_lines }}"
+    plugin_status: "{{ 'YELLOW' if plugin_missing else 'GREEN' }}"
+    plugin_observed: >-
+      {{
+        'no plug-in directory found'
+        if plugin_missing
+        else (plugin_lines | length | string) ~ ' inventory entries'
+      }}
+    plugin_details: >-
+      {{
+        'No HANA plug-in directory was detected; verify whether plug-ins are expected.'
+        if plugin_missing
+        else 'HANA plug-in inventory was collected.'
+      }}
+  when: hana_plugin_inventory_check is defined
+  tags: [prepatch_hana_plugin_inventory]
+
+- name: "STATUS: Add ClamSAP result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Security Services',
+              'name': 'ClamSAP',
+              'status': clamsap_status,
+              'observed': clamsap_observed,
+              'details': clamsap_details,
+              'source': 'collect_package_info.yml'
+            }
+          ]
+      }}
+  vars:
+    clamsap_package_text: "{{ clamsap_package_check.stdout | default('NOT COLLECTED') | trim }}"
+    clamsap_runtime_lines: >-
+      {{
+        clamsap_runtime_check.stdout_lines
+        | default([])
+        | map('trim')
+        | select('match', '^(active|inactive|failed|unknown)$')
+        | list
+      }}
+    clamsap_missing: "{{ 'MISSING' in clamsap_package_text }}"
+    clamsap_running: "{{ 'active' in clamsap_runtime_lines }}"
+    clamsap_required: "{{ prepatch_clamsap_required | default(false) | bool }}"
+    clamsap_status: >-
+      {{
+        'GREEN' if not clamsap_missing and clamsap_running
+        else 'RED' if clamsap_required
+        else 'YELLOW'
+      }}
+    clamsap_observed: >-
+      {{
+        'not installed'
+        if clamsap_missing
+        else 'installed and active'
+        if clamsap_running
+        else 'installed but inactive'
+      }}
+    clamsap_details: >-
+      {{
+        'No ClamSAP package was detected.'
+        if clamsap_missing
+        else 'Package=' ~ clamsap_package_text ~ '; runtime=active.'
+        if clamsap_running
+        else 'Package=' ~ clamsap_package_text ~ '; runtime was not confirmed active.'
+      }}
+  when:
+    - clamsap_package_check is defined
+    - clamsap_runtime_check is defined
+  tags: [prepatch_clamsap]
+
+- name: "STATUS: Add ClamAV daemon summary"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Security Services',
+              'name': 'ClamAV Daemon',
+              'status': clamav_status,
+              'observed': clamav_observed,
+              'details': clamav_details,
+              'source': 'collect_package_info.yml'
+            }
+          ]
+      }}
+  vars:
+    clamav_ok: "{{ clamav_validation_passed | default(false) | bool }}"
+    clamav_required: "{{ prepatch_clamav_required | default(false) | bool }}"
+    clamav_absent: >-
+      {{
+        not (clamav_installed | default(false) | bool)
+        and not (clamav_service_found | default(false) | bool)
+      }}
+    clamav_partially_present: "{{ not clamav_absent and not clamav_ok }}"
+    clamav_status: >-
+      {{
+        'GREEN' if clamav_ok
+        else 'RED' if clamav_required or clamav_partially_present
+        else 'YELLOW'
+      }}
+    clamav_observed: >-
+      {{
+        'installed, enabled, and running'
+        if clamav_ok
+        else 'not installed'
+        if clamav_absent
+        else 'installed but unhealthy'
+      }}
+    clamav_details: >-
+      {{
+        'No ClamAV package or service was detected.'
+        if clamav_absent
+        else 'Installed=' ~ (clamav_installed | default(false) | string)
+             ~ '; service found=' ~ (clamav_service_found | default(false) | string)
+             ~ '; enabled=' ~ (clamav_service_enabled | default(false) | string)
+             ~ '; running=' ~ (clamav_service_running | default(false) | string) ~ '.'
+      }}
+  when: clamav_validation_passed is defined
+  tags: [prepatch_clamav]
+
+- name: "STATUS: Add detected ClamAV services"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Security Services',
+              'name': item.name,
+              'status': clamav_service_status,
+              'observed': item.state | default('unknown'),
+              'details': 'Enabled state: ' ~ (item.enabled | default('unknown')) ~ '.',
+              'source': 'collect_package_info.yml'
+            }
+          ]
+      }}
+  vars:
+    clamav_service_status: >-
+      {{
+        'GREEN'
+        if item.state | default('unknown') == 'running'
+           and item.enabled | default('unknown') == 'enabled'
+        else 'RED'
+        if item.state | default('unknown') in ['failed', 'stopped']
+        else 'YELLOW'
+      }}
+  loop: "{{ clamav_service_results | default([]) }}"
+  tags: [prepatch_clamav]
+
+- name: "STATUS: Add Watchman result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'Security Services',
+              'name': 'Watchman',
+              'status': watchman_status,
+              'observed': watchman_observed,
+              'details': watchman_details,
+              'source': 'collect_package_info.yml'
+            }
+          ]
+      }}
+  vars:
+    watchman_package_text: "{{ watchman_package_check.stdout | default('NOT COLLECTED') | trim }}"
+    watchman_runtime_lines: >-
+      {{
+        watchman_runtime_check.stdout_lines
+        | default([])
+        | map('trim')
+        | select('match', '^(active|inactive|failed|unknown)$')
+        | list
+      }}
+    watchman_missing: "{{ 'MISSING' in watchman_package_text }}"
+    watchman_running: "{{ 'active' in watchman_runtime_lines }}"
+    watchman_required: "{{ prepatch_watchman_required | default(false) | bool }}"
+    watchman_status: >-
+      {{
+        'GREEN' if not watchman_missing and watchman_running
+        else 'RED' if watchman_required
+        else 'YELLOW'
+      }}
+    watchman_observed: >-
+      {{
+        'not installed'
+        if watchman_missing
+        else 'installed and active'
+        if watchman_running
+        else 'installed but inactive'
+      }}
+    watchman_details: >-
+      {{
+        'No Watchman package was detected.'
+        if watchman_missing
+        else 'Package=' ~ watchman_package_text ~ '; runtime=active.'
+        if watchman_running
+        else 'Package=' ~ watchman_package_text ~ '; runtime was not confirmed active.'
+      }}
+  when:
+    - watchman_package_check is defined
+    - watchman_runtime_check is defined
+  tags: [prepatch_watchman]
+
+- name: "PREPATCH: add filesystem inventory collection result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [{
+            'category': 'Basic Information',
+            'name': 'Filesystem Inventory',
+            'status': 'GREEN' if (mount_check.rc | default(1) | int == 0 and mount_check.stdout | default('') | trim | length > 0) else 'RED',
+            'observed': (mount_check.stdout_lines | default([]) | length | string) ~ ' mount entries',
+            'details': 'Mounted filesystem inventory collected with findmnt.' if (mount_check.rc | default(1) | int == 0) else (mount_check.stderr | default('findmnt failed', true) | trim),
+            'source': 'collect_basic_info.yml'
+          }]
+      }}
+  when: mount_check is defined
+  tags: [prepatch_filesystem_inventory]
+
+- name: "PREPATCH: add /etc/hosts collection result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [{
+            'category': 'Basic Information',
+            'name': '/etc/hosts',
+            'status': 'GREEN' if (etc_hosts_check.rc | default(1) | int == 0 and etc_hosts_check.stdout | default('') | trim | length > 0) else 'RED',
+            'observed': 'readable' if (etc_hosts_check.rc | default(1) | int == 0) else 'unavailable',
+            'details': 'Successfully read /etc/hosts.' if (etc_hosts_check.rc | default(1) | int == 0) else (etc_hosts_check.stderr | default('Unable to read /etc/hosts', true) | trim),
+            'source': 'collect_basic_info.yml'
+          }]
+      }}
+  when: etc_hosts_check is defined
+  tags: [prepatch_etc_hosts]
+
+- name: "PREPATCH: add hostname collection result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [{
+            'category': 'Basic Information',
+            'name': 'Hostname',
+            'status': 'GREEN' if (hostname_check.rc | default(1) | int == 0 and hostname_check.stdout | default('') | trim | length > 0) else 'RED',
+            'observed': hostname_check.stdout | default('not collected') | trim,
+            'details': 'Hostname collected successfully.' if (hostname_check.rc | default(1) | int == 0) else (hostname_check.stderr | default('hostname command failed', true) | trim),
+            'source': 'collect_basic_info.yml'
+          }]
+      }}
+  when: hostname_check is defined
+  tags: [prepatch_hostname]

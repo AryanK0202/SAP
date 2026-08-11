@@ -1,0 +1,121 @@
+---
+- name: "CHECK: Package Manager Activity"
+  block:
+    - name: "COLLECT: Active package-manager processes"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json, os
+        active = []
+        names = {"dnf", "yum", "rpm", "zypper", "apt", "apt-get", "dpkg"}
+        for pid in os.listdir("/proc"):
+            if not pid.isdigit():
+                continue
+            try:
+                with open(f"/proc/{pid}/comm", encoding="utf-8") as handle:
+                    name = handle.read().strip()
+                if name in names:
+                    active.append(f"{name}({pid})")
+            except (FileNotFoundError, PermissionError, ProcessLookupError):
+                pass
+        record = {
+          "category":"Patch Readiness", "name":"Package Manager Activity",
+          "status":"RED" if active else "GREEN",
+          "observed":"active package operation detected" if active else "idle",
+          "details":", ".join(active) if active else "No active package-manager process was detected.",
+          "source":"collect_patch_readiness.yml"
+        }
+        print(json.dumps([record]))
+        PY
+      args:
+        executable: /bin/bash
+      register: prepatch_package_manager_activity_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add package-manager activity result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_package_manager_activity_raw.stdout | from_json if prepatch_package_manager_activity_raw.rc | default(1) | int == 0 and prepatch_package_manager_activity_raw.stdout | default('') | trim | length > 0 else [{'category':'Patch Readiness','name':'Package Manager Activity','status':'RED','observed':'collection failed','details':prepatch_package_manager_activity_raw.stderr | default('No output', true) | trim,'source':'collect_patch_readiness.yml'}]) }}
+  tags: [prepatch_package_manager_activity]
+
+- name: "CHECK: Patch Staging Space"
+  block:
+    - name: "COLLECT: Patch staging free space"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json, os, shutil
+        path = os.environ["STAGING_PATH"]
+        yellow = float(os.environ["STAGING_YELLOW_GB"])
+        red = float(os.environ["STAGING_RED_GB"])
+        if os.path.exists(path):
+            usage = shutil.disk_usage(path); free_gb = usage.free / 1024**3
+            status = "RED" if free_gb < red else "YELLOW" if free_gb < yellow else "GREEN"
+            observed = f"{free_gb:.1f} GiB free"
+            details = f"Path={path}; yellow below {yellow:.1f} GiB; red below {red:.1f} GiB."
+        else:
+            status = "RED"; observed = "path missing"; details = f"Patch staging path does not exist: {path}"
+        print(json.dumps([{"category":"Patch Readiness","name":"Patch Staging Space","status":status,"observed":observed,"details":details,"source":"collect_patch_readiness.yml"}]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        STAGING_PATH: "{{ prepatch_patch_staging_path }}"
+        STAGING_YELLOW_GB: "{{ prepatch_patch_space_yellow_gb }}"
+        STAGING_RED_GB: "{{ prepatch_patch_space_red_gb }}"
+      register: prepatch_patch_staging_space_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add patch staging space result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_patch_staging_space_raw.stdout | from_json if prepatch_patch_staging_space_raw.rc | default(1) | int == 0 and prepatch_patch_staging_space_raw.stdout | default('') | trim | length > 0 else [{'category':'Patch Readiness','name':'Patch Staging Space','status':'RED','observed':'collection failed','details':prepatch_patch_staging_space_raw.stderr | default('No output', true) | trim,'source':'collect_patch_readiness.yml'}]) }}
+  tags: [prepatch_patch_staging_space]
+
+- name: "CHECK: Pending OS Reboot"
+  block:
+    - name: "COLLECT: Pending reboot markers"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json, os
+        markers = [p for p in ("/var/run/reboot-required", "/run/reboot-required") if os.path.exists(p)]
+        red = os.environ.get("PENDING_REBOOT_RED", "false").lower() == "true"
+        print(json.dumps([{
+          "category":"Patch Readiness", "name":"Pending OS Reboot",
+          "status":("RED" if red else "YELLOW") if markers else "GREEN",
+          "observed":"pending reboot detected" if markers else "none detected",
+          "details":"Marker(s): " + ", ".join(markers) if markers else "No standard pending-reboot marker was found.",
+          "source":"collect_patch_readiness.yml"
+        }]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        PENDING_REBOOT_RED: "{{ prepatch_pending_reboot_is_red | bool | ternary('true', 'false') }}"
+      register: prepatch_pending_reboot_raw
+      changed_when: false
+      failed_when: false
+    - name: "STATUS: Add pending reboot result"
+      ansible.builtin.set_fact:
+        prepatch_services: "{{ prepatch_services + (prepatch_pending_reboot_raw.stdout | from_json) }}"
+  tags: [prepatch_pending_os_reboot]
+
+- name: "CHECK: HDBLCM Tool"
+  block:
+    - name: "COLLECT: HDBLCM availability"
+      ansible.builtin.stat:
+        path: "{{ prepatch_hdblcm_path }}"
+      register: prepatch_hdblcm_stat
+    - name: "STATUS: Add HDBLCM tool result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services + [{
+              'category':'Patch Readiness', 'name':'HDBLCM Tool',
+              'status':'GREEN' if prepatch_hdblcm_stat.stat.exists | default(false) and prepatch_hdblcm_stat.stat.executable | default(false) else 'YELLOW',
+              'observed':'available' if prepatch_hdblcm_stat.stat.exists | default(false) and prepatch_hdblcm_stat.stat.executable | default(false) else 'not found or not executable',
+              'details':prepatch_hdblcm_path, 'source':'collect_patch_readiness.yml'
+            }]
+          }}
+  tags: [prepatch_hdblcm_tool]

@@ -1,0 +1,7 @@
+---
+# Compatibility wrapper for the original standalone pre_patch_checks.yml.
+# In this repository, hosts/reporting are owned by site.yml, so this is now a
+# task file rather than a separate playbook.
+- name: "PREPATCH: run integrated Claire checks"
+  ansible.builtin.import_tasks: tasks/prepatch/main.yml
+  tags: [prepatch]

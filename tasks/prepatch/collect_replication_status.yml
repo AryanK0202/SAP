@@ -1,0 +1,117 @@
+---
+- name: "CHECK: HANA System Replication state"
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    if [ ! -x "{{ prepatch_hdbnsutil_path }}" ]; then
+      echo "hdbnsutil not found: {{ prepatch_hdbnsutil_path }}"
+      exit 3
+    fi
+
+    # A login shell is required on many HANA systems so that the HANA library
+    # paths are available. Directly invoking hdbnsutil through become_user can
+    # fail with a missing libhdbns.so error.
+    output=$(su - "{{ sid_adm_user }}" -c "'{{ prepatch_hdbnsutil_path }}' -sr_state" 2>&1)
+    command_rc=$?
+    printf '%s\n' "$output"
+
+    if [ "$command_rc" -ne 0 ]; then
+      exit "$command_rc"
+    fi
+
+    online=$(printf '%s\n' "$output" | awk -F: '/^[[:space:]]*online[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print tolower($2); exit}')
+    mode=$(printf '%s\n' "$output" | awk -F: '/^[[:space:]]*mode[[:space:]]*:/ {gsub(/[[:space:]]/, "", $2); print tolower($2); exit}')
+
+    printf '__PREPATCH_ONLINE__=%s\n' "${online:-unknown}"
+    printf '__PREPATCH_MODE__=%s\n' "${mode:-unknown}"
+  args:
+    executable: /bin/bash
+  become: true
+  register: prepatch_replication_check
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_hana_system_replication]
+
+- name: "STATUS: Add HANA System Replication result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'High Availability',
+              'name': 'HANA System Replication',
+              'status': replication_status,
+              'observed': replication_observed,
+              'details': replication_details,
+              'source': 'collect_replication_status.yml'
+            }
+          ]
+      }}
+  vars:
+    replication_rc: "{{ prepatch_replication_check.rc | default(3) | int }}"
+    replication_online_line: >-
+      {{
+        prepatch_replication_check.stdout_lines
+        | default([])
+        | select('match', '^__PREPATCH_ONLINE__=')
+        | list
+        | first
+        | default('__PREPATCH_ONLINE__=unknown')
+      }}
+    replication_mode_line: >-
+      {{
+        prepatch_replication_check.stdout_lines
+        | default([])
+        | select('match', '^__PREPATCH_MODE__=')
+        | list
+        | first
+        | default('__PREPATCH_MODE__=unknown')
+      }}
+    replication_online: "{{ replication_online_line.split('=', 1)[1] | default('unknown') }}"
+    replication_mode: "{{ replication_mode_line.split('=', 1)[1] | default('unknown') }}"
+    replication_command_ok: "{{ (prepatch_replication_check.rc | default(3) | int) == 0 }}"
+    replication_configured: "{{ replication_mode not in ['none', 'unknown', ''] }}"
+    replication_healthy: >-
+      {{
+        replication_command_ok
+        and replication_online == 'true'
+        and replication_configured
+      }}
+    replication_status: >-
+      {{
+        'RED'
+        if hana_replication_expected | bool
+           and not replication_healthy
+        else 'GREEN'
+        if replication_command_ok
+           and (
+             replication_healthy
+             or (not (hana_replication_expected | bool) and not replication_configured)
+           )
+        else 'YELLOW'
+      }}
+    replication_observed: >-
+      {{
+        'online=' ~ replication_online ~ ', mode=' ~ replication_mode
+        if replication_command_ok
+        else 'check unavailable'
+      }}
+    replication_raw_error: >-
+      {{
+        prepatch_replication_check.stdout
+        | default(prepatch_replication_check.stderr | default('No output'), true)
+        | regex_replace('(?m)^__PREPATCH_(ONLINE|MODE)__=.*$', '')
+        | trim
+      }}
+    replication_details: >-
+      {{
+        'System Replication is healthy.'
+        if replication_healthy
+        else 'System Replication is not configured and is not required for this host.'
+        if replication_command_ok and not replication_configured and not (hana_replication_expected | bool)
+        else 'System Replication is required but is not healthy. online=' ~ replication_online ~ '; mode=' ~ replication_mode ~ '.'
+        if hana_replication_expected | bool and replication_command_ok
+        else replication_raw_error
+      }}
+  tags: [prepatch_hana_system_replication]

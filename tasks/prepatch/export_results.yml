@@ -1,0 +1,38 @@
+---
+- name: "PREPATCH: export normalized results to site report accumulator"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{
+        hana_check_results
+        + [{
+            'check': 'Prepatch — ' ~ item.name,
+            'status': (
+              'PASS' if (item.status | upper) == 'GREEN'
+              else 'WARN' if (item.status | upper) == 'YELLOW'
+              else 'FAIL' if (item.status | upper) == 'RED'
+              else 'ERROR'
+            ),
+            'details': (
+              'Category=' ~ (item.category | default('Prepatch'))
+              ~ '; observed=' ~ (item.observed | default('n/a') | string)
+              ~ '; ' ~ (item.details | default('') | string)
+              ~ '; source=' ~ (item.source | default('tasks/prepatch'))
+            )
+          }]
+      }}
+  loop: "{{ prepatch_services | default([]) }}"
+  loop_control:
+    label: "{{ item.name | default('prepatch result') }}"
+  tags: [always]
+
+- name: "PREPATCH: save normalized raw result snapshot"
+  ansible.builtin.copy:
+    dest: "{{ host_raw_dir }}/prepatch_services.json"
+    mode: "0644"
+    content: "{{ prepatch_services | default([]) | to_nice_json }}\n"
+  delegate_to: localhost
+  become: false
+  when:
+    - save_raw_outputs | default(false) | bool
+    - prepatch_services | default([]) | length > 0
+  tags: [always]

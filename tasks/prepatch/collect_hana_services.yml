@@ -1,0 +1,125 @@
+---
+- name: "CHECK: Collect individual HANA service states"
+  ansible.builtin.shell: |
+    set -o pipefail
+    "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+    import json
+    import os
+    import re
+    import subprocess
+
+    sapcontrol = os.environ["SAPCONTROL_PATH"]
+    hdb_command = os.environ["HDB_COMMAND"]
+    instance = os.environ["HANA_INSTANCE"]
+    records = []
+
+    def add(name, status, observed, details):
+        records.append({
+            "category": "HANA Services",
+            "name": name,
+            "status": status,
+            "observed": observed,
+            "details": details,
+            "source": "collect_hana_services.yml",
+        })
+
+    status_map = {
+        "GREEN": "GREEN",
+        "YELLOW": "YELLOW",
+        "RED": "RED",
+        "GRAY": "RED",
+    }
+
+    if os.path.isfile(sapcontrol) and os.access(sapcontrol, os.X_OK):
+        result = subprocess.run(
+            [sapcontrol, "-nr", instance, "-function", "GetProcessList"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        parsed = 0
+        for raw_line in result.stdout.splitlines():
+            parts = [part.strip() for part in raw_line.split(",")]
+            if len(parts) < 4 or parts[2].upper() not in status_map:
+                continue
+            process_name, description, display_status, text_status = parts[:4]
+            parsed += 1
+            add(
+                f"HANA {process_name}",
+                status_map[display_status.upper()],
+                f"{display_status.upper()} / {text_status}",
+                description or process_name,
+            )
+
+        if parsed:
+            print(json.dumps(records))
+            raise SystemExit(0)
+
+        sapcontrol_error = result.stderr.strip() or result.stdout.strip() or "No process rows returned."
+    else:
+        sapcontrol_error = f"sapcontrol is unavailable at {sapcontrol}."
+
+    # Fallback allows an alert-time check to return useful information even when
+    # sapcontrol cannot be used. It cannot prove that every expected service exists.
+    if os.path.isfile(hdb_command) and os.access(hdb_command, os.X_OK):
+        result = subprocess.run([hdb_command, "info"], text=True, capture_output=True, check=False)
+        process_names = []
+        for line in result.stdout.splitlines():
+            match = re.search(r"\b(hdb[a-zA-Z0-9_]+)\b", line)
+            if match:
+                process_names.append(match.group(1))
+        for process_name in sorted(set(process_names)):
+            add(f"HANA {process_name}", "GREEN", "process detected", "Detected by HDB info fallback.")
+        add(
+            "HANA Instance Service Collection",
+            "YELLOW" if process_names else "RED",
+            "HDB info fallback used",
+            sapcontrol_error if process_names else (result.stderr.strip() or result.stdout.strip() or sapcontrol_error),
+        )
+    else:
+        add(
+            "HANA Instance Service Collection",
+            "RED",
+            "service status unavailable",
+            sapcontrol_error + f" HDB command is unavailable at {hdb_command}.",
+        )
+
+    print(json.dumps(records))
+    PY
+  args:
+    executable: /bin/bash
+  environment:
+    SAPCONTROL_PATH: "{{ prepatch_sapcontrol_path }}"
+    HDB_COMMAND: "{{ hana_hdb_home }}/HDB"
+    HANA_INSTANCE: "{{ hana_instance_number }}"
+  become: true
+  become_user: "{{ sid_adm_user }}"
+  register: prepatch_hana_services_raw
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_hana_core_services]
+
+- name: "STATUS: Add HANA service records"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + (
+            prepatch_hana_services_raw.stdout | from_json
+            if prepatch_hana_services_raw.rc | default(1) | int == 0
+               and prepatch_hana_services_raw.stdout | default('') | trim | length > 0
+            else [
+              {
+                'category': 'HANA Services',
+                'name': 'HANA Instance Service Collection',
+                'status': 'RED',
+                'observed': 'collection failed',
+                'details': prepatch_hana_services_raw.stderr
+                           | default(prepatch_hana_services_raw.stdout | default('No output'), true)
+                           | trim,
+                'source': 'collect_hana_services.yml'
+              }
+            ]
+          )
+      }}
+  tags: [prepatch_hana_core_services]

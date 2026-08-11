@@ -1,0 +1,52 @@
+---
+# Optional consolidated Claire summary. This plugs into site.yml Play 2 and uses
+# the same validation run directory as the rest of the repository.
+- name: "PREPATCH REPORT: initialize aggregate"
+  ansible.builtin.set_fact:
+    prepatch_report_hosts: []
+  tags: [always]
+
+- name: "PREPATCH REPORT: collect hosts that ran Claire checks"
+  ansible.builtin.set_fact:
+    prepatch_report_hosts: >-
+      {{
+        prepatch_report_hosts
+        + [{
+            'host': item,
+            'status': hostvars[item].prepatch_host_status | default('UNKNOWN'),
+            'services': hostvars[item].prepatch_services | default([])
+          }]
+      }}
+  loop: "{{ groups.get('hana_db', []) }}"
+  when:
+    - hostvars[item].prepatch_services is defined
+    - hostvars[item].prepatch_services | length > 0
+  tags: [always]
+
+- name: "PREPATCH REPORT: write consolidated JSON"
+  ansible.builtin.copy:
+    dest: "{{ run_dir }}/_prepatch_summary.json"
+    mode: "0644"
+    content: "{{ {'hosts': prepatch_report_hosts} | to_nice_json }}\n"
+  when: prepatch_report_hosts | length > 0
+  tags: [always]
+
+- name: "PREPATCH REPORT: write consolidated Markdown"
+  ansible.builtin.copy:
+    dest: "{{ run_dir }}/_prepatch_summary.md"
+    mode: "0644"
+    content: |
+      # Claire Prepatch Summary — {{ run_timestamp }}
+
+      {% for host in prepatch_report_hosts %}
+      ## {{ host.host }} — {{ host.status }}
+
+      | Check | Status | Observed | Details |
+      |---|---|---|---|
+      {% for result in host.services %}
+      | {{ result.name | replace('|', '\\|') }} | {{ result.status }} | {{ result.observed | default('') | string | replace('|', '\\|') }} | {{ result.details | default('') | string | replace('|', '\\|') }} |
+      {% endfor %}
+
+      {% endfor %}
+  when: prepatch_report_hosts | length > 0
+  tags: [always]

@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """Minimal localhost UI for the bulk SAP validation runner.
 
+Artifact browser build: expandable GitHub-style tree with folder icons and
+a full-height split preview pane.
+
 The UI has no third-party Python dependencies. It reads the repository's CSV
 inputs and check catalog, opens a browser, and launches ``sap_validate.py``
 with a validated argument list.
@@ -28,15 +31,16 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import quote, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
 ROOT = Path(__file__).resolve().parent
 SERVER_ID_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 TRUTHY = {"1", "true", "yes", "y", "on"}
 MAX_BODY_BYTES = 1_000_000
 MAX_LOG_LINES = 5_000
+MAX_PREVIEW_BYTES = 1_000_000
 RUN_DIRECTORY_RE = re.compile(r"^Run directory:\s*(?P<path>.+?)\s*$")
-UI_BUILD = "2026.08.04-layout-4-arrows-left"
+UI_BUILD = "2026.08.06-artifact-tree-v10-vscode-code-blocks"
 
 
 def _truthy(value: Any) -> bool:
@@ -331,18 +335,26 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
             selectable_check_ids.add(check_id)
             tag_to_ids.setdefault(str(tag), []).append(check_id)
         checks.append(
-            {
-                "id": check_id,
-                "category": str(raw.get("category") or "Uncategorized"),
-                "task": str(raw.get("task") or ""),
-                "scope": str(raw.get("scope") or ""),
-                "component": str(raw.get("component") or ""),
-                "ansible_tag": str(tag or ""),
-                "implementation_status": str(raw.get("implementation_status") or ""),
-                "selectable": selectable,
-            }
+          {
+              "id": check_id,
+              "category": str(raw.get("category") or "Uncategorized"),
+              "group": str(raw.get("group") or "Uncategorized"),
+              "contributor": str(raw.get("contributor") or "Unknown"),
+              "task": str(raw.get("task") or ""),
+              "scope": str(raw.get("scope") or ""),
+              "component": str(raw.get("component") or ""),
+              "ansible_tag": str(tag or ""),
+              "implementation_status": str(raw.get("implementation_status") or ""),
+              "selectable": selectable,
+          }
+      )
+    checks.sort(
+        key=lambda item: (
+            item["category"].lower(),
+            item["group"].lower(),
+            item["id"].lower(),
         )
-    checks.sort(key=lambda item: (item["category"].lower(), item["id"].lower()))
+    )
 
     profiles: dict[str, list[str]] = {}
     for name, profile in profiles_raw.items():
@@ -608,7 +620,8 @@ body {
 a { color: var(--primary); text-decoration: none; }
 a:hover { text-decoration: underline; }
 button, input, select { font: inherit; }
-button, select, input[type="search"], input[type="number"] { min-height: 36px; }
+button { min-height: 36px; }
+select, input[type="search"], input[type="number"] { min-height: 32px; }
 button {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -629,43 +642,46 @@ button.primary:hover:not(:disabled) { background: var(--primary-hover); }
 button.danger { border-color: #f1b4ae; color: var(--danger); background: var(--danger-bg); }
 input[type="search"], input[type="number"] {
   border: 1px solid var(--border-strong);
-  border-radius: 8px;
-  background: #fff;
-  color: var(--text);
-  padding: .4rem .6rem;
-}
-select {
-  border: 1px solid var(--border-strong);
   border-radius: 3px;
   background: #fff;
   color: var(--text);
-  padding: .4rem .6rem;
+  padding: .25rem .55rem;
 }
-.workflow section:nth-of-type(2) select,
-.workflow section:nth-of-type(3) select {
+select {
   appearance: none;
   -webkit-appearance: none;
   -moz-appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2024%2024%27%20fill%3D%27none%27%20stroke%3D%27%23475467%27%20stroke-width%3D%272.5%27%20stroke-linecap%3D%27round%27%20stroke-linejoin%3D%27round%27%3E%3Cpolyline%20points%3D%276%209%2012%2015%2018%209%27/%3E%3C/svg%3E");
+  border: 1px solid var(--border-strong);
+  border-radius: 3px;
+  background-color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20viewBox%3D%270%200%2016%2010%27%3E%3Cpath%20d%3D%27M1%201h14L8%209z%27%20fill%3D%27%23475467%27/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: .5rem center;
-  background-size: 18px 18px;
-  padding-left: 2.2rem;
+  background-position: right .65rem center;
+  background-size: 12px 8px;
+  color: var(--text);
+  padding: .25rem 1.9rem .25rem .55rem;
 }
 input[type="search"] { min-width: min(22rem, 100%); }
 input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary); vertical-align: -2px; }
-.app-shell { width: min(1600px, calc(100% - 32px)); margin: 0 auto 2rem; }
+.app-shell { width: min(1800px, calc(100% - 32px)); margin: 0 auto 2rem; }
 .app-header {
-  margin: 0 -16px .9rem;
-  padding: .6rem max(16px, calc((100vw - 1600px) / 2));
+  margin: 0 0 .9rem;
+  padding: .55rem 0;
   background: var(--surface);
   color: var(--text);
   border-bottom: 1px solid var(--border);
 }
-.header-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.header-row {
+  display: flex;
+  width: min(1800px, calc(100% - 32px));
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
 .app-header h1 { margin: 0; font-size: 1.05rem; font-weight: 600; letter-spacing: -.01em; }
 .app-header p { margin: .15rem 0 0; color: var(--muted); font-size: 12.5px; }
-.ui-build { display: inline-block; margin-left: .45rem; color: var(--muted); font-size: 11px; font-weight: 500; letter-spacing: .03em; }
 .header-status { display: flex; gap: .5rem; align-items: center; }
 .status-pill, .count-pill {
   display: inline-flex;
@@ -682,6 +698,12 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary)
 .status-pill.success { color: #067647; background: #eafaf1; border-color: #a9e6c6; }
 .status-pill.failed { color: #b42318; background: #fdeeed; border-color: #f1b4ae; }
 .workflow { display: grid; gap: .75rem; }
+.workflow,
+.run-bar,
+.output-section,
+main > .card {
+  width: 100%;
+}
 .card {
   margin: 0;
   padding: 0;
@@ -725,23 +747,32 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary)
 .control.grow { flex: 1 1 20rem; }
 .control-label { color: #344054; font-size: 12px; font-weight: 600; }
 .params-row {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .45rem 1rem;
+  align-items: start;
+}
+.params-row .controls {
+  flex-wrap: nowrap;
+  flex: 0 0 auto;
+}
+.checkbox-grid {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  align-items: start;
-  justify-content: flex-start;
-}
-.params-row .controls { flex: 0 1 auto; }
-.checkbox-grid {
-  display: grid;
-  grid-template-columns: repeat(4, auto);
-  gap: .35rem 1.75rem;
-  margin-top: 1.3rem;
+  align-items: center;
+  gap: .35rem 1.15rem;
+  margin: 0 0 .15rem;
   padding: 0;
   border: 0;
   background: none;
 }
-.checkbox-grid label { display: flex; align-items: center; gap: .4rem; min-height: 24px; white-space: nowrap; }
+.checkbox-grid label {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-height: 24px;
+  white-space: nowrap;
+}
 .toolbar {
   display: flex;
   flex-wrap: wrap;
@@ -751,28 +782,44 @@ input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--primary)
   margin-bottom: .6rem;
 }
 .toolbar-left, .toolbar-right { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.toolbar-right.visibility-actions { gap: .4rem; }
 .system-filter-row {
   display: grid;
-  grid-template-columns: minmax(145px, .8fr) minmax(145px, .8fr) minmax(165px, .9fr) minmax(280px, 1.7fr);
-  gap: .4rem .6rem;
+  grid-template-columns:
+    minmax(145px, 165px)
+    minmax(145px, 165px)
+    minmax(175px, 195px)
+    minmax(280px, 430px)
+    1fr
+    auto;
+  gap: .4rem .55rem;
   align-items: end;
   min-width: 0;
+  margin-bottom: .6rem;
 }
 .system-filter-row .control { min-width: 0; }
 .system-filter-row select,
 .system-filter-row input[type="search"] { width: 100%; min-width: 0; }
-.system-selection-actions {
+.visibility-actions {
   display: flex;
+  gap: .4rem;
+  white-space: nowrap;
+}
+.visibility-actions button {
+  min-height: 32px;
+  padding: .25rem .6rem;
+}
+.system-selection-actions {
+  grid-column: 6;
+  align-items: end;
   justify-content: flex-end;
-  gap: .5rem;
-  margin-top: .5rem;
-  margin-bottom: .8rem;
-  padding-bottom: .1rem;
+  margin: 0;
+  padding: 0;
 }
 .count-pill { color: #344054; background: #eef2f6; }
 .table-wrap { width: 100%; overflow: auto; border: 1px solid var(--border); border-radius: 0; }
 table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 900px; }
-th, td { border-bottom: 1px solid var(--border); padding: .45rem .55rem; text-align: left; vertical-align: top; }
+th, td { border-bottom: 1px solid var(--border); padding: .45rem .48rem; text-align: left; vertical-align: top; }
 th {
   position: sticky;
   top: 0;
@@ -792,6 +839,48 @@ tbody tr:hover { background: #f1f6ff; }
 td:first-child, th:first-child { text-align: center; width: 64px; }
 .muted { color: var(--muted); }
 .hidden { display: none !important; }
+.check-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 0;
+  margin: 0 0 .75rem;
+  border-bottom: 1px solid var(--border-strong);
+  overflow-x: auto;
+}
+
+.check-tab {
+  min-height: 42px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.check-tab:hover:not(:disabled) {
+  background: #f8fafc;
+}
+
+.check-tab.active {
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  background: #f8fafc;
+}
+
+.check-tab-panel {
+  display: grid;
+  gap: .6rem;
+}
+
+.check-tab-empty {
+  padding: 1.5rem;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--muted);
+  text-align: center;
+}
 .check-groups {
   display: grid;
   gap: .6rem;
@@ -802,8 +891,8 @@ td:first-child, th:first-child { text-align: center; width: 64px; }
   scrollbar-gutter: auto;
 }
 .check-table {
-  width: max(100%, 1380px);
-  min-width: 1380px;
+  width: 100%;
+  min-width: 1180px;
   max-width: none;
   table-layout: fixed;
 }
@@ -812,13 +901,13 @@ td:first-child, th:first-child { text-align: center; width: 64px; }
   overflow-wrap: anywhere;
   word-break: normal;
 }
-.check-table th:nth-child(1), .check-table td:nth-child(1) { width: 4.64%; }
-.check-table th:nth-child(2), .check-table td:nth-child(2) { width: 15.22%; }
-.check-table th:nth-child(3), .check-table td:nth-child(3) { width: 14.13%; }
-.check-table th:nth-child(4), .check-table td:nth-child(4) { width: 11.59%; }
-.check-table th:nth-child(5), .check-table td:nth-child(5) { width: 10.51%; }
-.check-table th:nth-child(6), .check-table td:nth-child(6) { width: 10.51%; }
-.check-table th:nth-child(7), .check-table td:nth-child(7) { width: 33.40%; }
+.check-table th:nth-child(1), .check-table td:nth-child(1) { width: 52px; }
+.check-table th:nth-child(2), .check-table td:nth-child(2) { width: 210px; }
+.check-table th:nth-child(3), .check-table td:nth-child(3) { width: 195px; }
+.check-table th:nth-child(4), .check-table td:nth-child(4) { width: 145px; }
+.check-table th:nth-child(5), .check-table td:nth-child(5) { width: 135px; }
+.check-table th:nth-child(6), .check-table td:nth-child(6) { width: 135px; white-space: nowrap; }
+.check-table th:nth-child(7), .check-table td:nth-child(7) { width: auto; }
 details.check-category, details.output-panel {
   border: 1px solid var(--border);
   border-radius: 0;
@@ -909,12 +998,17 @@ details.check-category .table-wrap { border: 0; border-top: 1px solid var(--bord
 .badge {
   display: inline-flex;
   align-items: center;
+  width: max-content;
+  max-width: none;
+  flex-shrink: 0;
   border-radius: 999px;
-  padding: .15rem .5rem;
-  font-size: 11px;
-  font-weight: 500;
+  padding: .1rem .3rem;
+  font-size: 9px;
+  font-weight: 400;
+  line-height: 1.2;
   text-transform: uppercase;
-  letter-spacing: .035em;
+  letter-spacing: 0;
+  white-space: nowrap;
 }
 .badge.pass, .badge.success, .badge.green { background: #dcfae6; color: var(--success); }
 .badge.fail, .badge.error, .badge.failed, .badge.red { background: #fee4e2; color: var(--danger); }
@@ -935,18 +1029,39 @@ pre {
   font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 .empty-note { padding: 1rem; text-align: center; color: var(--muted); }
+@media (max-width: 1100px) and (min-width: 761px) {
+  .system-filter-row {
+    grid-template-columns:
+      minmax(125px, 145px)
+      minmax(125px, 145px)
+      minmax(145px, 165px)
+      minmax(220px, 320px)
+      1fr
+      auto;
+    gap: .4rem;
+    margin-bottom: .55rem;
+  }
+  .system-selection-actions { gap: .3rem; }
+  .system-selection-actions button { padding-left: .45rem; padding-right: .45rem; }
+}
 @media (max-width: 760px) {
-  .app-shell { width: min(100% - 20px, 1600px); }
-  .app-header { margin-left: -10px; margin-right: -10px; }
+  .app-shell { width: min(100% - 20px, 1280px); }
+  .header-row { width: min(100% - 20px, 1280px); }
   .card-header, .card-body { padding-left: .8rem; padding-right: .8rem; }
   .run-bar { grid-template-columns: 1fr; bottom: 6px; }
   .result-overview { grid-template-columns: 1fr; }
   .result-actions { justify-content: flex-start; }
   input[type="search"] { min-width: 100%; width: 100%; }
   .control.grow { flex-basis: 100%; }
-  .system-filter-row { grid-template-columns: 1fr; }
-  .system-selection-actions { justify-content: flex-start; }
-  .checkbox-grid { grid-template-columns: repeat(2, auto); margin-top: .6rem; }
+  .system-filter-row { grid-template-columns: 1fr; margin-bottom: .55rem; }
+  .system-selection-actions { grid-column: 1; justify-content: flex-start; }
+  .params-row { grid-template-columns: 1fr; align-items: start; }
+  .params-row .controls { flex-wrap: wrap; }
+  .checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, auto));
+    margin-top: .5rem;
+  }
 }
 </style>
 </head>
@@ -955,7 +1070,7 @@ pre {
   <div class="header-row">
     <div>
       <h1>SAP Validation</h1>
-      <p>Select systems and checks, run validation, and review generated reports. <span class="ui-build">Build 2026.08.04-layout-4-arrows-left</span></p>
+      <p>Select systems and checks, run validation, and review generated reports.</p>
     </div>
     <div class="header-status"><span id="headerStatus" class="status-pill">Loading</span></div>
   </div>
@@ -977,10 +1092,10 @@ pre {
       <label class="control"><span class="control-label">Landscape</span><select id="landscapeFilter"><option value="">All landscapes</option></select></label>
       <label class="control"><span class="control-label">Component</span><select id="componentFilter"><option value="">All components</option></select></label>
       <label class="control"><span class="control-label">Search systems</span><input id="systemSearch" type="search" placeholder="Server, hostname, address, component"></label>
-    </div>
-    <div class="system-selection-actions">
-      <button type="button" id="selectVisibleSystems">Select visible</button>
-      <button type="button" id="clearVisibleSystems">Clear visible</button>
+      <div class="system-selection-actions visibility-actions">
+        <button type="button" id="selectVisibleSystems">Select visible</button>
+        <button type="button" id="clearVisibleSystems">Clear visible</button>
+      </div>
     </div>
     <div class="table-wrap">
       <table id="systemsTable">
@@ -1012,14 +1127,21 @@ pre {
     <div class="toolbar">
       <div class="toolbar-left">
         <label class="control"><span class="control-label">Profile</span><select id="profile"><option value="">Custom selection</option></select></label>
-        <label class="control grow"><span class="control-label">Search checks</span><input id="checkSearch" type="search" placeholder="Category, check ID, tag, or description"></label>
+        <label class="control grow"><span class="control-label">Search checks</span><input id="checkSearch" type="search" placeholder="Group, contributor, check ID, tag, or description"></label>
         <label><input id="showUnavailable" type="checkbox"> Show unavailable checks</label>
       </div>
-      <div class="toolbar-right">
+      <div class="toolbar-right visibility-actions">
         <button type="button" id="selectVisibleChecks">Select visible</button>
         <button type="button" id="clearVisibleChecks">Clear visible</button>
       </div>
     </div>
+    <div
+      id="checkTabs"
+      class="check-tabs"
+      role="tablist"
+      aria-label="Validation category"
+    ></div>
+
     <div id="checks" class="check-groups"></div>
   </div>
 </section>
@@ -1086,8 +1208,8 @@ pre {
         <div id="runDirectory" class="muted"></div>
       </div>
       <div class="result-actions">
-        <a href="/artifacts/" target="_blank" rel="noopener">Browse all outputs</a>
-        <a id="browseOutput" class="hidden" target="_blank" rel="noopener">Browse current run</a>
+        <a href="/artifacts/">Browse all outputs</a>
+        <a id="browseOutput" class="hidden">Browse current run</a>
         <button type="button" id="openOutput" disabled>Open folder</button>
       </div>
     </div>
@@ -1113,6 +1235,15 @@ pre {
 'use strict';
 let config = null;
 let systemSort = {key: 'server_id', asc: true};
+
+const CHECK_CATEGORIES = [
+  'Build Validation',
+  'Prepatch',
+  'Health',
+  'Availability'
+];
+
+let activeCheckCategory = 'Build Validation';
 
 function el(id) { return document.getElementById(id); }
 function selectedValues(selector) { return [...document.querySelectorAll(selector + ':checked')].map(x => x.value); }
@@ -1187,78 +1318,278 @@ function applySystemFilters() {
   updateCounts();
 }
 
-function groupChecks() {
+function checksForCategory(category) {
+  return config.checks.filter(check => check.category === category);
+}
+
+function groupChecks(checks) {
   const groups = new Map();
-  for (const check of config.checks) {
-    if (!groups.has(check.category)) groups.set(check.category, []);
-    groups.get(check.category).push(check);
+
+  for (const check of checks) {
+    const group = check.group || 'Uncategorized';
+
+    if (!groups.has(group)) {
+      groups.set(group, []);
+    }
+
+    groups.get(group).push(check);
   }
+
   return groups;
 }
 
+function renderCheckTabs() {
+  const tabs = el('checkTabs');
+  tabs.textContent = '';
+
+  for (const category of CHECK_CATEGORIES) {
+    const button = document.createElement('button');
+
+    button.type = 'button';
+    button.className = 'check-tab';
+    button.dataset.category = category;
+    button.setAttribute('role', 'tab');
+
+    const available = checksForCategory(category)
+      .filter(check => check.selectable)
+      .length;
+
+    button.textContent = `${category} (${available})`;
+
+    button.addEventListener('click', () => {
+      setActiveCheckCategory(category);
+    });
+
+    tabs.appendChild(button);
+  }
+}
+
+function setActiveCheckCategory(category) {
+  activeCheckCategory = category;
+
+  for (const button of el('checkTabs').querySelectorAll('.check-tab')) {
+    const active = button.dataset.category === category;
+
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+  }
+
+  for (const panel of el('checks').querySelectorAll('.check-tab-panel')) {
+    panel.classList.toggle(
+      'hidden',
+      panel.dataset.category !== category
+    );
+  }
+
+  applyCheckFilters();
+}
+
 function renderChecks() {
+  renderCheckTabs();
+
   const container = el('checks');
   container.textContent = '';
-  for (const [category, checks] of groupChecks()) {
-    const details = document.createElement('details');
-    details.open = true;
-    details.className = 'check-category';
-    details.dataset.category = category.toLowerCase();
-    const summary = document.createElement('summary');
-    const categoryBox = document.createElement('input');
-    categoryBox.type = 'checkbox'; categoryBox.className = 'categoryChoice';
-    categoryBox.setAttribute('aria-label', `Select visible checks in ${category}`);
-    categoryBox.addEventListener('click', event => event.stopPropagation());
-    categoryBox.addEventListener('change', () => {
-      for (const box of details.querySelectorAll('.checkChoice:not(:disabled)')) {
-        const row = box.closest('tr');
-        if (!row.classList.contains('hidden')) box.checked = categoryBox.checked;
-      }
-      el('profile').value = '';
-      updateCounts();
-    });
-    const categoryName = document.createElement('span');
-    categoryName.textContent = category;
-    const categoryMeta = document.createElement('span');
-    categoryMeta.className = 'muted';
-    categoryMeta.style.fontWeight = '600';
-    categoryMeta.textContent = `${checks.filter(x => x.selectable).length} available`;
-    summary.append(categoryBox, categoryName, categoryMeta);
-    details.appendChild(summary);
 
-    const wrap = document.createElement('div');
-    wrap.className = 'table-wrap check-table-wrap';
-    const table = document.createElement('table');
-    table.className = 'check-table';
-    table.innerHTML = '<colgroup><col style="width:4.64%"><col style="width:15.22%"><col style="width:14.13%"><col style="width:11.59%"><col style="width:10.51%"><col style="width:10.51%"><col style="width:33.40%"></colgroup><thead><tr><th>Select</th><th>Check ID</th><th>Tag</th><th>Component</th><th>Scope</th><th>Status</th><th>Description</th></tr></thead>';
-    const tbody = document.createElement('tbody');
-    for (const check of checks) {
-      const tr = document.createElement('tr');
-      tr.dataset.search = [check.category, check.id, check.ansible_tag, check.component, check.scope, check.task, check.implementation_status].join(' ').toLowerCase();
-      tr.dataset.selectable = String(check.selectable);
-      const checkbox = document.createElement('input');
-      checkbox.type = 'checkbox'; checkbox.className = 'checkChoice'; checkbox.value = check.id;
-      checkbox.disabled = !check.selectable;
-      checkbox.setAttribute('aria-label', `Select ${check.id}`);
-      checkbox.addEventListener('change', () => { el('profile').value = ''; updateCounts(); });
-      const values = [checkbox, check.id, check.ansible_tag || '—', check.component || '—', check.scope || '—'];
-      for (const value of values) {
-        const td = document.createElement('td');
-        if (value instanceof Node) td.appendChild(value); else td.textContent = value;
-        tr.appendChild(td);
-      }
-      const statusCell = document.createElement('td');
-      statusCell.appendChild(statusBadge(check.selectable ? 'Available' : (check.implementation_status || 'Unavailable')));
-      tr.appendChild(statusCell);
-      const descriptionCell = document.createElement('td');
-      descriptionCell.textContent = check.task || '—';
-      tr.appendChild(descriptionCell);
-      tbody.appendChild(tr);
+  for (const category of CHECK_CATEGORIES) {
+    const panel = document.createElement('div');
+
+    panel.className = 'check-tab-panel';
+    panel.dataset.category = category;
+    panel.setAttribute('role', 'tabpanel');
+
+    const categoryChecks = checksForCategory(category);
+
+    if (categoryChecks.length === 0) {
+      const empty = document.createElement('div');
+
+      empty.className = 'check-tab-empty';
+      empty.textContent = `No ${category} checks have been added yet.`;
+
+      panel.appendChild(empty);
+      container.appendChild(panel);
+      continue;
     }
-    table.appendChild(tbody); wrap.appendChild(table); details.appendChild(wrap); container.appendChild(details);
+
+    for (const [group, checks] of groupChecks(categoryChecks)) {
+      const details = document.createElement('details');
+
+      details.open = true;
+      details.className = 'check-category';
+      details.dataset.group = group.toLowerCase();
+
+      const summary = document.createElement('summary');
+
+      const groupBox = document.createElement('input');
+
+      groupBox.type = 'checkbox';
+      groupBox.className = 'groupChoice';
+
+      groupBox.setAttribute(
+        'aria-label',
+        `Select visible checks in ${group}`
+      );
+
+      groupBox.addEventListener('click', event => {
+        event.stopPropagation();
+      });
+
+      groupBox.addEventListener('change', () => {
+        for (
+          const box
+          of details.querySelectorAll('.checkChoice:not(:disabled)')
+        ) {
+          const row = box.closest('tr');
+
+          if (!row.classList.contains('hidden')) {
+            box.checked = groupBox.checked;
+          }
+        }
+
+        el('profile').value = '';
+        updateCounts();
+      });
+
+      const groupName = document.createElement('span');
+      groupName.textContent = group;
+
+      const groupMeta = document.createElement('span');
+
+      groupMeta.className = 'muted';
+      groupMeta.style.fontWeight = '600';
+
+      groupMeta.textContent =
+        `${checks.filter(check => check.selectable).length} available`;
+
+      summary.append(
+        groupBox,
+        groupName,
+        groupMeta
+      );
+
+      details.appendChild(summary);
+
+      const wrap = document.createElement('div');
+
+      wrap.className = 'table-wrap check-table-wrap';
+
+      const table = document.createElement('table');
+
+      table.className = 'check-table';
+
+      table.innerHTML = `
+        <colgroup>
+          <col style="width:52px">
+          <col style="width:195px">
+          <col style="width:195px">
+          <col style="width:130px">
+          <col style="width:115px">
+          <col style="width:125px">
+          <col style="width:160px">
+          <col>
+        </colgroup>
+        <thead>
+          <tr>
+            <th>Select</th>
+            <th>Check ID</th>
+            <th>Tag</th>
+            <th>Component</th>
+            <th>Scope</th>
+            <th>Contributor</th>
+            <th>Status</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+      `;
+
+      const tbody = document.createElement('tbody');
+
+      for (const check of checks) {
+        const tr = document.createElement('tr');
+
+        tr.dataset.search = [
+          check.category,
+          check.group,
+          check.contributor,
+          check.id,
+          check.ansible_tag,
+          check.component,
+          check.scope,
+          check.task,
+          check.implementation_status
+        ].join(' ').toLowerCase();
+
+        tr.dataset.selectable = String(check.selectable);
+
+        const checkbox = document.createElement('input');
+
+        checkbox.type = 'checkbox';
+        checkbox.className = 'checkChoice';
+        checkbox.value = check.id;
+        checkbox.disabled = !check.selectable;
+
+        checkbox.setAttribute(
+          'aria-label',
+          `Select ${check.id}`
+        );
+
+        checkbox.addEventListener('change', () => {
+          el('profile').value = '';
+          updateCounts();
+        });
+
+        const values = [
+          checkbox,
+          check.id,
+          check.ansible_tag || '—',
+          check.component || '—',
+          check.scope || '—',
+          check.contributor || '—'
+        ];
+
+        for (const value of values) {
+          const td = document.createElement('td');
+
+          if (value instanceof Node) {
+            td.appendChild(value);
+          } else {
+            td.textContent = value;
+          }
+
+          tr.appendChild(td);
+        }
+
+        const statusCell = document.createElement('td');
+
+        statusCell.appendChild(
+          statusBadge(
+            check.selectable
+              ? 'Available'
+              : (check.implementation_status || 'Unavailable')
+          )
+        );
+
+        tr.appendChild(statusCell);
+
+        const descriptionCell = document.createElement('td');
+        descriptionCell.textContent = check.task || '—';
+
+        tr.appendChild(descriptionCell);
+
+        tbody.appendChild(tr);
+      }
+
+      table.appendChild(tbody);
+      wrap.appendChild(table);
+      details.appendChild(wrap);
+      panel.appendChild(details);
+    }
+
+    container.appendChild(panel);
   }
+
   installCheckTableScrollSync();
-  applyCheckFilters();
+
+  setActiveCheckCategory(activeCheckCategory);
 }
 
 let checkScrollSyncActive = false;
@@ -1298,27 +1629,75 @@ function setProfile(name) {
 }
 
 function updateCounts() {
-  const selectedSystems = selectedValues('.systemChoice');
-  const visibleSystems = [...document.querySelectorAll('#systemsTable tbody tr:not(.hidden)')].length;
-  el('systemCount').textContent = `${selectedSystems.length} selected / ${visibleSystems} visible`;
   const selectedChecks = selectedValues('.checkChoice');
-  const visibleChecks = [...document.querySelectorAll('#checks tbody tr:not(.hidden)')].length;
-  el('checkCount').textContent = `${selectedChecks.length} selected / ${visibleChecks} visible`;
+
+  const activePanel = [
+    ...document.querySelectorAll('.check-tab-panel')
+  ].find(
+    panel => panel.dataset.category === activeCheckCategory
+  );
+
+  const visibleChecks = activePanel
+    ? [...activePanel.querySelectorAll('tbody tr')]
+        .filter(row => !row.classList.contains('hidden'))
+        .length
+    : 0;
+
+  el('checkCount').textContent =
+    `${selectedChecks.length} selected / ${visibleChecks} visible`;
+
+  // Update each group's "select all" checkbox.
   for (const details of document.querySelectorAll('#checks details')) {
-    const boxes = [...details.querySelectorAll('.checkChoice:not(:disabled)')];
-    const visible = boxes.filter(box => !box.closest('tr').classList.contains('hidden'));
-    const chosen = visible.filter(box => box.checked).length;
-    const category = details.querySelector('.categoryChoice');
-    category.checked = visible.length > 0 && chosen === visible.length;
-    category.indeterminate = chosen > 0 && chosen < visible.length;
+    const boxes = [
+      ...details.querySelectorAll('.checkChoice:not(:disabled)')
+    ];
+
+    const visible = boxes.filter(
+      box => !box.closest('tr').classList.contains('hidden')
+    );
+
+    const chosen = visible.filter(
+      box => box.checked
+    ).length;
+
+    const group = details.querySelector('.groupChoice');
+
+    if (!group) {
+      continue;
+    }
+
+    group.checked =
+      visible.length > 0 &&
+      chosen === visible.length;
+
+    group.indeterminate =
+      chosen > 0 &&
+      chosen < visible.length;
   }
 }
 
 function setVisible(selector, checked) {
   for (const box of document.querySelectorAll(selector)) {
     const row = box.closest('tr');
-    if (!box.disabled && row && !row.classList.contains('hidden')) box.checked = checked;
+
+    if (!row || box.disabled || row.classList.contains('hidden')) {
+      continue;
+    }
+
+    if (selector === '.checkChoice') {
+      const panel = box.closest('.check-tab-panel');
+
+      if (
+        panel &&
+        panel.dataset.category !== activeCheckCategory
+      ) {
+        continue;
+      }
+    }
+
+    box.checked = checked;
   }
+
   updateCounts();
 }
 
@@ -1384,7 +1763,6 @@ function renderResults(state) {
   for (const file of artifacts.files || []) {
     const anchor = document.createElement('a');
     anchor.href = file.url; anchor.textContent = file.label;
-    anchor.target = '_blank'; anchor.rel = 'noopener';
     links.appendChild(anchor);
   }
 
@@ -1416,7 +1794,7 @@ function renderResults(state) {
     if (item.report_url) {
       const anchor = document.createElement('a');
       anchor.href = item.report_url; anchor.textContent = 'Open report';
-      anchor.target = '_blank'; anchor.rel = 'noopener'; reportCell.appendChild(anchor);
+      reportCell.appendChild(anchor);
     } else {
       reportCell.textContent = '—';
     }
@@ -1558,39 +1936,1288 @@ class SAPUIHandler(BaseHTTPRequestHandler):
             return None
         return target
 
-    def _send_artifact_directory(self, directory: Path) -> None:
+    def _artifact_target_from_relative(self, relative_value: str) -> Path | None:
+        raw_relative = unquote(relative_value or "").lstrip("/")
+        candidate = self.app.paths.artifact_root / raw_relative
+        target = _path_within(candidate, self.app.paths.artifact_root)
+        if target is None or _is_hidden_artifact(target, self.app.paths.artifact_root):
+            return None
+        return target
+
+    def _artifact_relative(self, target: Path) -> str:
         root = self.app.paths.artifact_root.resolve()
-        relative = directory.resolve().relative_to(root)
-        page_title = "Validation outputs" if not relative.parts else relative.name
-        location = "Artifact root" if not relative.parts else relative.as_posix()
+        relative = target.resolve().relative_to(root)
+        return relative.as_posix() if relative.parts else ""
 
-        breadcrumb_items = ['<a href="/artifacts/">Outputs</a>']
-        current = root
-        for part in relative.parts:
-            current /= part
-            href = _artifact_url(current, root, directory=True)
-            breadcrumb_items.append(
-                f'<a href="{html.escape(href, quote=True)}">{html.escape(part)}</a>'
-            )
-        breadcrumbs = '<span class="separator">/</span>'.join(breadcrumb_items)
+    def _artifact_raw_url(self, target: Path, *, download: bool = False) -> str:
+        relative = target.resolve().relative_to(self.app.paths.artifact_root.resolve())
+        encoded = "/".join(quote(part, safe="") for part in relative.parts)
+        prefix = "/artifact-download/" if download else "/artifact-raw/"
+        return prefix + encoded
 
+    def _send_artifact_browser(self, initial_target: Path) -> None:
+        root = self.app.paths.artifact_root.resolve()
+        target = _path_within(initial_target, root)
+        if target is None or not target.exists() or _is_hidden_artifact(target, root):
+            self._send_json({"error": "Artifact not found"}, HTTPStatus.NOT_FOUND)
+            return
+
+        initial_relative = self._artifact_relative(target)
+        initial_is_file = target.is_file()
+        document = r'''<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Validation outputs · SAP Validation</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --surface-muted: #f6f8fa;
+  --border: #d0d7de;
+  --border-muted: #d8dee4;
+  --text: #1f2328;
+  --muted: #656d76;
+  --primary: #0969da;
+  --primary-hover: #0550ae;
+  --selected: #ddf4ff;
+  --code-bg: #f6f8fa;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; min-height: 0; }
+body {
+  height: 100vh;
+  min-height: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, input { font: inherit; }
+button, .button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--text);
+  padding: .3rem .7rem;
+  cursor: pointer;
+  font-weight: 500;
+  text-decoration: none;
+}
+button:hover, .button:hover { background: #eef1f4; text-decoration: none; }
+button.primary, .button.primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.primary:hover, .button.primary:hover { background: var(--primary-hover); }
+button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+
+header {
+  background: var(--surface);
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+
+.header-row {
+  width: min(1800px, calc(100% - 32px));
+  min-height: 56px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.header-title {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  color: var(--text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+
+.header-mark {
+  color: var(--text);
+  font: 700 18px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.header-row .button {
+  background: #fff;
+  border-color: #8c959f;
+  color: var(--text);
+}
+
+.header-row .button:hover {
+  background: var(--surface-muted);
+  border-color: #6e7781;
+}
+
+main {
+  width: min(1600px, calc(100% - 32px));
+  height: calc(100vh - 56px);
+  min-height: 0;
+  margin: 0 auto;
+  padding: .65rem 0 .75rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.repo-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+  flex-wrap: wrap;
+  margin-bottom: .6rem;
+}
+.repo-title { margin: 0; font-size: 1.15rem; font-weight: 600; }
+.repo-subtitle { color: var(--muted); font-size: 12px; }
+.explorer {
+  --sidebar-width: 25%;
+
+  flex: 1 1 auto;
+  display: grid;
+
+
+  grid-template-columns:
+    minmax(220px, var(--sidebar-width))
+    1px
+    minmax(320px, 1fr);
+
+  height: auto;
+  min-height: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.sidebar {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-right: 0;
+  background: var(--surface);
+}
+
+.explorer-splitter {
+  position: relative;
+  z-index: 2;
+  justify-self: center;
+  align-self: stretch;
+
+  width: 7px;
+  min-width: 7px;
+
+  cursor: col-resize;
+  touch-action: none;
+  background: transparent;
+}
+
+.explorer-splitter::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+
+  width: 1px;
+  background: var(--border);
+  transform: translateX(-50%);
+  transition: background-color 80ms ease;
+}
+
+.explorer-splitter:hover::before,
+.explorer-splitter.dragging::before {
+  background: #8c959f;
+}
+
+.explorer-splitter:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+body.resizing-sidebar {
+  cursor: col-resize;
+  user-select: none;
+}
+
+body.resizing-sidebar iframe {
+  pointer-events: none;
+}
+
+.sidebar-toolbar { padding: .7rem; border-bottom: 1px solid var(--border); background: var(--surface-muted); }
+.breadcrumbs { display: flex; align-items: center; gap: .28rem; flex-wrap: wrap; margin-bottom: .55rem; }
+.breadcrumbs button {
+  min-height: 0;
+  border: 0;
+  background: transparent;
+  color: var(--primary);
+  padding: 0;
+  font-weight: 600;
+}
+.breadcrumbs button:hover { background: transparent; text-decoration: underline; }
+.separator { color: var(--muted); }
+.search { width: 100%; min-height: 34px; border: 1px solid var(--border); border-radius: 6px; padding: .35rem .55rem; background: #fff; }
+#entryList { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.tree-list { margin: 0; padding: 0; list-style: none; }
+.tree-list .tree-list {
+  margin-left: 17px;
+  padding-left: 7px;
+  border-left: 1px solid var(--border-muted);
+}
+.tree-item { min-width: 0; }
+.tree-row {
+  position: relative;
+  width: 100%;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 16px 20px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .35rem;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  padding: .24rem .55rem;
+  font-weight: 400;
+}
+.tree-row:hover { background: var(--surface-muted); }
+.tree-row.active-folder { background: #f3f6f9; }
+.tree-row.selected { background: var(--selected); }
+.tree-row.selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 4px;
+  bottom: 4px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--primary);
+}
+.tree-chevron {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+}
+.tree-chevron svg { width: 12px; height: 12px; fill: currentColor; }
+.entry-icon {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+.entry-icon svg { width: 18px; height: 18px; display: block; fill: currentColor; }
+.entry-icon.folder-icon { color: #54aeff; }
+.entry-icon.file-icon { color: #57606a; }
+.entry-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); font-weight: 400; }
+.tree-row.folder .entry-name { font-weight: 500; }
+.entry-meta { color: var(--muted); font-size: 11px; white-space: nowrap; }
+.tree-loading { padding: .35rem .7rem .35rem 3rem; color: var(--muted); font-size: 12px; }
+.root-tree-row { margin: .3rem .35rem .1rem; width: calc(100% - .7rem); }
+.root-tree-row .entry-name { font-weight: 600; }
+.root-children { margin-left: 9px !important; padding-left: 8px !important; }
+.empty-list { padding: 2rem 1rem; color: var(--muted); text-align: center; }
+.preview {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #fff;
+}
+.preview-header {
+  min-height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .65rem .8rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-muted);
+}
+.preview-title { min-width: 0; }
+.preview-title strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.preview-title span { color: var(--muted); font-size: 12px; }
+.preview-title span.truncated { color: #9a6700; }
+.preview-actions { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+.preview-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.welcome { display: grid; place-items: center; min-height: 100%; padding: 2rem; text-align: center; color: var(--muted); }
+.welcome strong { display: block; margin-bottom: .35rem; color: var(--text); font-size: 1.05rem; }
+.code-view {
+  margin: 0;
+  min-height: 100%;
+  padding: .8rem 0;
+  background: var(--code-bg);
+  overflow: auto;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+}
+.code-line { display: grid; grid-template-columns: 54px minmax(max-content, 1fr); padding-right: 1rem; }
+.line-number { color: #8c959f; text-align: right; user-select: none; padding-right: .8rem; }
+.line-text { min-width: 0; }
+.table-scroll { overflow: auto; }
+.csv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.csv-table th, .csv-table td { padding: .45rem .55rem; border-right: 1px solid var(--border-muted); border-bottom: 1px solid var(--border-muted); text-align: left; white-space: pre-wrap; vertical-align: top; }
+.csv-table th { position: sticky; top: 0; background: var(--surface-muted); font-weight: 600; z-index: 1; }
+.media-preview { display: grid; place-items: start center; min-height: 100%; padding: 1rem; background: var(--surface-muted); }
+.media-preview img { max-width: 100%; height: auto; border: 1px solid var(--border); background: #fff; }
+.media-preview iframe { width: 100%; height: 760px; border: 1px solid var(--border); background: #fff; }
+.notice { margin: 1rem; padding: .85rem; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-muted); color: var(--muted); }
+
+.preview-empty {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: .35rem;
+  min-height: 14rem;
+  padding: 2rem;
+  color: var(--muted);
+  text-align: center;
+}
+.preview-empty strong { color: var(--text); font-weight: 600; }
+.markdown-view {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 1.4rem 1.6rem 3rem;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.markdown-view > :first-child { margin-top: 0; }
+.markdown-view > :last-child { margin-bottom: 0; }
+.markdown-view h1, .markdown-view h2, .markdown-view h3,
+.markdown-view h4, .markdown-view h5, .markdown-view h6 {
+  margin: 1.35rem 0 .65rem;
+  line-height: 1.25;
+  font-weight: 600;
+}
+.markdown-view h1 { padding-bottom: .35rem; border-bottom: 1px solid var(--border); font-size: 1.8rem; }
+.markdown-view h2 { padding-bottom: .3rem; border-bottom: 1px solid var(--border); font-size: 1.45rem; }
+.markdown-view h3 { font-size: 1.2rem; }
+.markdown-view h4 { font-size: 1.05rem; }
+.markdown-view p { margin: 0 0 1rem; }
+.markdown-view ul, .markdown-view ol { margin: 0 0 1rem; padding-left: 2rem; }
+.markdown-view li + li { margin-top: .2rem; }
+.markdown-view blockquote {
+  margin: 0 0 1rem;
+  padding: .15rem 1rem;
+  border-left: 4px solid var(--border-strong);
+  color: var(--muted);
+}
+.markdown-view pre {
+  margin: .65rem 0 1.15rem;
+  overflow: auto;
+  padding: .95rem 1.05rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #f6f8fa;
+  color: #24292f;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre;
+}
+.markdown-view code {
+  border-radius: 4px;
+  padding: .12rem .28rem;
+  background: #eff1f3;
+  font: .9em ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.markdown-view pre code { padding: 0; background: transparent; color: inherit; font: inherit; }
+.markdown-view hr { height: 1px; margin: 1.4rem 0; border: 0; background: var(--border); }
+.markdown-view a { color: var(--primary); text-decoration: underline; text-underline-offset: 2px; }
+.markdown-view img { max-width: 100%; height: auto; }
+.markdown-view table { display: block; width: max-content; max-width: 100%; margin: 0 0 1rem; overflow: auto; border-collapse: collapse; }
+.markdown-view th, .markdown-view td { padding: .4rem .65rem; border: 1px solid var(--border); text-align: left; vertical-align: top; }
+.markdown-view th { background: var(--surface-muted); font-weight: 600; }
+.markdown-view .task-item { list-style: none; margin-left: -1.4rem; }
+.markdown-view .task-item input { margin-right: .45rem; }
+.view-toggle { display: inline-flex; align-items: center; border: 1px solid var(--border-strong); border-radius: 7px; overflow: hidden; background: #fff; }
+.view-toggle button {
+  min-height: 32px;
+  border: 0;
+  border-radius: 0;
+  padding: .3rem .65rem;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+}
+.view-toggle button + button { border-left: 1px solid var(--border-strong); }
+.view-toggle button:hover { background: #f3f6f9; }
+.view-toggle button.active { background: #e8f0fe; color: var(--primary); font-weight: 600; }
+@media (max-width: 850px) {
+  html, body { height: auto; min-height: 100%; }
+  body { height: auto; min-height: 100vh; overflow: auto; }
+  main { height: auto; min-height: 0; overflow: visible; padding: .65rem 0 1rem; }
+  .explorer { grid-template-columns: 1fr; height: auto; min-height: 0; }
+  .explorer-splitter { display: none; }
+  .sidebar { max-height: 520px; border-right: 0; border-bottom: 1px solid var(--border); }
+  .preview-body, .welcome, .code-view { min-height: 520px; }
+}
+@media (max-width: 540px) {
+  .header-row, main { width: min(100% - 20px, 1440px); }
+  .entry-meta { display: none; }
+  .preview-header { align-items: flex-start; flex-direction: column; }
+  .preview-actions { justify-content: flex-start; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-row">
+    <div class="header-title"><span class="header-mark">&lt;/&gt;</span><span>SAP Validation Outputs</span></div>
+    <a class="button" href="/">Return to validation UI</a>
+  </div>
+</header>
+<main>
+  <div class="repo-bar">
+    <div>
+      <h1 class="repo-title">artifacts</h1>
+      <div class="repo-subtitle">Expand folders into a file tree on the left and preview files on the right.</div>
+    </div>
+    <div>
+      <button id="allFiles" type="button">All files</button>
+    </div>
+  </div>
+  <section class="explorer" aria-label="Artifact explorer">
+    <aside class="sidebar">
+      <div class="sidebar-toolbar">
+        <nav id="breadcrumbs" class="breadcrumbs" aria-label="Artifact path"></nav>
+        <input id="fileSearch" class="search" type="search" placeholder="Filter expanded tree" aria-label="Filter expanded file tree">
+      </div>
+      <div id="entryList" aria-live="polite"></div>
+    </aside>
+
+    <div
+      id="explorerSplitter"
+      class="explorer-splitter"
+      role="separator"
+      aria-label="Resize folder browser"
+      aria-orientation="vertical"
+      aria-valuemin="220"
+      tabindex="0"
+      title="Drag to resize the folder browser. Double-click to reset."
+    ></div>
+
+    <section class="preview">
+      <div class="preview-header">
+        <div class="preview-title"><strong id="previewName">Select a file</strong><span id="previewMeta">File contents will appear here.</span></div>
+        <div id="previewActions" class="preview-actions"></div>
+      </div>
+      <div id="previewBody" class="preview-body">
+        <div class="welcome"><div><strong>Artifact preview</strong>Select a file from the folder browser.</div></div>
+      </div>
+    </section>
+  </section>
+</main>
+<script>
+'use strict';
+const initialPath = __INITIAL_PATH__;
+const initialIsFile = __INITIAL_IS_FILE__;
+const directoryCache = new Map();
+const directoryRequests = new Map();
+const expandedPaths = new Set();
+let rootExpanded = true;
+let selectedPath = '';
+let activeDirectory = '';
+
+const breadcrumbs = document.getElementById('breadcrumbs');
+const entryList = document.getElementById('entryList');
+const search = document.getElementById('fileSearch');
+const previewName = document.getElementById('previewName');
+const previewMeta = document.getElementById('previewMeta');
+const previewActions = document.getElementById('previewActions');
+const previewBody = document.getElementById('previewBody');
+
+const explorer = document.querySelector('.explorer');
+const sidebar = explorer.querySelector('.sidebar');
+const explorerSplitter = document.getElementById('explorerSplitter');
+
+const MIN_SIDEBAR_WIDTH = 220;
+const MIN_PREVIEW_WIDTH = 320;
+const DIVIDER_LAYOUT_WIDTH = 1;
+
+let resizedSidebarWidth = null;
+let dragStartX = 0;
+let dragStartWidth = 0;
+
+function explorerResizeEnabled() {
+  return window.matchMedia('(min-width: 851px)').matches;
+}
+
+function setSidebarWidth(width) {
+  if (!explorerResizeEnabled()) return;
+
+  const explorerWidth = explorer.getBoundingClientRect().width;
+  const maximumWidth = Math.max(
+    MIN_SIDEBAR_WIDTH,
+    explorerWidth - MIN_PREVIEW_WIDTH - DIVIDER_LAYOUT_WIDTH
+  );
+
+  const clampedWidth = Math.min(
+    Math.max(width, MIN_SIDEBAR_WIDTH),
+    maximumWidth
+  );
+
+  resizedSidebarWidth = clampedWidth;
+
+  explorer.style.setProperty(
+    '--sidebar-width',
+    `${clampedWidth}px`
+  );
+
+  explorerSplitter.setAttribute(
+    'aria-valuenow',
+    String(Math.round(clampedWidth))
+  );
+
+  explorerSplitter.setAttribute(
+    'aria-valuemax',
+    String(Math.round(maximumWidth))
+  );
+}
+
+function finishSidebarResize(event) {
+  explorerSplitter.classList.remove('dragging');
+  document.body.classList.remove('resizing-sidebar');
+
+  if (
+    event &&
+    explorerSplitter.hasPointerCapture(event.pointerId)
+  ) {
+    explorerSplitter.releasePointerCapture(event.pointerId);
+  }
+}
+
+explorerSplitter.addEventListener('pointerdown', event => {
+  if (!explorerResizeEnabled()) return;
+
+  event.preventDefault();
+
+  dragStartX = event.clientX;
+  dragStartWidth = sidebar.getBoundingClientRect().width;
+
+  explorerSplitter.classList.add('dragging');
+  document.body.classList.add('resizing-sidebar');
+  explorerSplitter.setPointerCapture(event.pointerId);
+});
+
+explorerSplitter.addEventListener('pointermove', event => {
+  if (!explorerSplitter.hasPointerCapture(event.pointerId)) return;
+
+  const movement = event.clientX - dragStartX;
+  setSidebarWidth(dragStartWidth + movement);
+});
+
+explorerSplitter.addEventListener(
+  'pointerup',
+  finishSidebarResize
+);
+
+explorerSplitter.addEventListener(
+  'pointercancel',
+  finishSidebarResize
+);
+
+explorerSplitter.addEventListener(
+  'lostpointercapture',
+  () => {
+    explorerSplitter.classList.remove('dragging');
+    document.body.classList.remove('resizing-sidebar');
+  }
+);
+
+explorerSplitter.addEventListener('dblclick', () => {
+  resizedSidebarWidth = null;
+  explorer.style.removeProperty('--sidebar-width');
+});
+
+explorerSplitter.addEventListener('keydown', event => {
+  if (!explorerResizeEnabled()) return;
+
+  const currentWidth =
+    resizedSidebarWidth ??
+    sidebar.getBoundingClientRect().width;
+
+  const increment = event.shiftKey ? 50 : 10;
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault();
+    setSidebarWidth(currentWidth - increment);
+  } else if (event.key === 'ArrowRight') {
+    event.preventDefault();
+    setSidebarWidth(currentWidth + increment);
+  } else if (event.key === 'Home') {
+    event.preventDefault();
+    setSidebarWidth(MIN_SIDEBAR_WIDTH);
+  } else if (event.key === 'End') {
+    event.preventDefault();
+    setSidebarWidth(Number.MAX_SAFE_INTEGER);
+  }
+});
+
+window.addEventListener('resize', () => {
+  if (
+    explorerResizeEnabled() &&
+    resizedSidebarWidth !== null
+  ) {
+    setSidebarWidth(resizedSidebarWidth);
+  }
+});
+
+let currentPreviewData = null;
+let markdownViewMode = 'preview';
+
+function normalizePath(path) {
+  return String(path || '').split('/').filter(Boolean).join('/');
+}
+function encodeArtifactPath(path) {
+  return normalizePath(path).split('/').filter(Boolean).map(encodeURIComponent).join('/');
+}
+function browserUrl(path, isDirectory) {
+  const encoded = encodeArtifactPath(path);
+  if (!encoded) return '/artifacts/';
+  return '/artifacts/' + encoded + (isDirectory ? '/' : '');
+}
+function parentPath(path) {
+  const parts = normalizePath(path).split('/').filter(Boolean);
+  parts.pop();
+  return parts.join('/');
+}
+function setHistory(path, isDirectory) {
+  history.pushState({path: normalizePath(path), isDirectory}, '', browserUrl(path, isDirectory));
+}
+async function getJson(url) {
+  const response = await fetch(url, {headers: {'Accept': 'application/json'}});
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error || response.statusText);
+  return data;
+}
+function escapeHtml(value) {
+  return String(value).replace(/[&<>'"]/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[character]));
+}
+function setChevronIcon(container, expanded, loading = false) {
+  if (loading) {
+    container.textContent = '…';
+    return;
+  }
+  container.innerHTML = expanded
+    ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M12.78 5.22a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L3.22 6.28a.75.75 0 1 1 1.06-1.06L8 8.94l3.72-3.72a.75.75 0 0 1 1.06 0Z"/></svg>'
+    : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6.22 3.22a.75.75 0 0 1 1.06 0l4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.75.75 0 0 1-1.06-1.06L9.94 8 6.22 4.28a.75.75 0 0 1 0-1.06Z"/></svg>';
+}
+function setEntryIcon(container, isDirectory, expanded = false) {
+  container.className = 'entry-icon ' + (isDirectory ? 'folder-icon' : 'file-icon');
+  if (isDirectory) {
+    container.innerHTML = expanded
+      ? '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h4.19c.4 0 .78.16 1.06.44l.81.81h6.44c.97 0 1.75.78 1.75 1.75v.69a.75.75 0 0 1-.03.21l-1.52 5.32A1.75 1.75 0 0 1 12.77 13H2.23a1.75 1.75 0 0 1-1.68-1.28L.03 9.9A.75.75 0 0 1 0 9.69V4.25C0 3.28.78 2.5 1.75 2.5Zm-.25 4.75v2.33l.49 1.73c.09.41.45.69.87.69h9.91c.4 0 .75-.27.86-.65L15 6.55a.25.25 0 0 0-.24-.32H2.49c-.45 0-.85.3-.96.74l-.03.28Z"/></svg>'
+      : '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.75 2.5h4.19c.4 0 .78.16 1.06.44l.81.81h6.44c.97 0 1.75.78 1.75 1.75v6.25c0 .97-.78 1.75-1.75 1.75H1.75A1.75 1.75 0 0 1 0 11.75v-7.5C0 3.28.78 2.5 1.75 2.5Zm0 1.5a.25.25 0 0 0-.25.25v7.5c0 .14.11.25.25.25h12.5c.14 0 .25-.11.25-.25V5.5a.25.25 0 0 0-.25-.25H7.5a.75.75 0 0 1-.53-.22l-1.03-1.03H1.75Z"/></svg>';
+  } else {
+    container.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.75 1.5A1.75 1.75 0 0 0 2 3.25v9.5c0 .97.78 1.75 1.75 1.75h8.5A1.75 1.75 0 0 0 14 12.75V5.56c0-.46-.18-.9-.51-1.23L11.17 2a1.75 1.75 0 0 0-1.24-.51H3.75Zm0 1.5h5.5v2.5c0 .41.34.75.75.75h2.5v6.5c0 .14-.11.25-.25.25h-8.5a.25.25 0 0 1-.25-.25v-9.5c0-.14.11-.25.25-.25Zm7 .31 1.44 1.44h-1.44V3.31Z"/></svg>';
+  }
+}
+function breadcrumbParts(path) {
+  const result = [{name: 'artifacts', path: ''}];
+  let current = '';
+  for (const part of normalizePath(path).split('/').filter(Boolean)) {
+    current = current ? `${current}/${part}` : part;
+    result.push({name: part, path: current});
+  }
+  return result;
+}
+function clearPreview(message = 'Select a file from the folder browser.') {
+  selectedPath = '';
+  previewName.textContent = 'Select a file';
+  previewMeta.textContent = 'File contents will appear here.';
+  previewMeta.className = '';
+  previewActions.textContent = '';
+  currentPreviewData = null;
+  markdownViewMode = 'preview';
+  previewBody.innerHTML = '';
+  const welcome = document.createElement('div');
+  welcome.className = 'welcome';
+  const content = document.createElement('div');
+  const strong = document.createElement('strong');
+  strong.textContent = 'Artifact preview';
+  content.append(strong, document.createTextNode(message));
+  welcome.appendChild(content);
+  previewBody.appendChild(welcome);
+}
+function renderBreadcrumbs(path = activeDirectory) {
+  breadcrumbs.textContent = '';
+  breadcrumbParts(path).forEach((item, index) => {
+    if (index) {
+      const separator = document.createElement('span');
+      separator.className = 'separator';
+      separator.textContent = '/';
+      breadcrumbs.appendChild(separator);
+    }
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.textContent = item.name;
+    button.addEventListener('click', () => {
+      revealDirectory(item.path, true).catch(showTreeError);
+    });
+    breadcrumbs.appendChild(button);
+  });
+}
+function showTreeError(error) {
+  entryList.innerHTML = `<div class="empty-list">${escapeHtml(error.message)}</div>`;
+}
+async function loadDirectoryData(path) {
+  const normalized = normalizePath(path);
+  if (directoryCache.has(normalized)) return directoryCache.get(normalized);
+  if (directoryRequests.has(normalized)) return directoryRequests.get(normalized);
+
+  const request = (async () => {
+    const data = await getJson('/api/artifacts?path=' + encodeURIComponent(normalized));
+    directoryCache.set(data.path, data);
+    return data;
+  })();
+  directoryRequests.set(normalized, request);
+  renderTree();
+  try {
+    return await request;
+  } finally {
+    directoryRequests.delete(normalized);
+    renderTree();
+  }
+}
+function entryMatches(entry, query) {
+  return `${entry.name} ${entry.type} ${entry.path}`.toLowerCase().includes(query);
+}
+function entryOrDescendantMatches(entry, query) {
+  if (!query || entryMatches(entry, query)) return true;
+  if (!entry.is_dir) return false;
+  const childData = directoryCache.get(entry.path);
+  return Boolean(childData && childData.entries.some(child => entryOrDescendantMatches(child, query)));
+}
+function createTreeList(entries, query) {
+  const list = document.createElement('ul');
+  list.className = 'tree-list';
+  for (const entry of entries) {
+    if (!entryOrDescendantMatches(entry, query)) continue;
+    const item = document.createElement('li');
+    item.className = 'tree-item';
+    const isExpanded = entry.is_dir && expandedPaths.has(entry.path);
+    const isLoading = entry.is_dir && directoryRequests.has(entry.path);
+    const row = document.createElement('button');
+    row.type = 'button';
+    row.className = 'tree-row';
+    if (entry.is_dir) row.classList.add('folder');
+    if (entry.is_dir && entry.path === activeDirectory) row.classList.add('active-folder');
+    if (!entry.is_dir && entry.path === selectedPath) row.classList.add('selected');
+    row.title = entry.path || entry.name;
+    if (entry.is_dir) row.setAttribute('aria-expanded', String(isExpanded));
+
+    const chevron = document.createElement('span');
+    chevron.className = 'tree-chevron';
+    if (entry.is_dir) setChevronIcon(chevron, isExpanded, isLoading);
+    const icon = document.createElement('span');
+    setEntryIcon(icon, entry.is_dir, isExpanded);
+    const name = document.createElement('span');
+    name.className = 'entry-name';
+    name.textContent = entry.name;
+    const meta = document.createElement('span');
+    meta.className = 'entry-meta';
+    meta.textContent = entry.is_dir ? entry.modified : `${entry.size} · ${entry.modified}`;
+    row.append(chevron, icon, name, meta);
+
+    row.addEventListener('click', () => {
+      if (!entry.is_dir) {
+        loadPreview(entry.path, true).catch(error => {
+          previewBody.innerHTML = `<div class="notice">${escapeHtml(error.message)}</div>`;
+        });
+        return;
+      }
+      activeDirectory = entry.path;
+      renderBreadcrumbs();
+      if (expandedPaths.has(entry.path)) {
+        expandedPaths.delete(entry.path);
+        renderTree();
+      } else {
+        expandDirectory(entry.path, true).catch(showTreeError);
+      }
+    });
+    item.appendChild(row);
+
+    const childData = entry.is_dir ? directoryCache.get(entry.path) : null;
+    const showChildren = childData && (isExpanded || Boolean(query));
+    if (showChildren) {
+      const childList = createTreeList(childData.entries, query);
+      if (childList.childElementCount) item.appendChild(childList);
+      else if (!query) {
+        const empty = document.createElement('div');
+        empty.className = 'tree-loading';
+        empty.textContent = 'Empty folder';
+        item.appendChild(empty);
+      }
+    } else if (isExpanded && isLoading) {
+      const loading = document.createElement('div');
+      loading.className = 'tree-loading';
+      loading.textContent = 'Loading…';
+      item.appendChild(loading);
+    }
+    list.appendChild(item);
+  }
+  return list;
+}
+function renderTree() {
+  const rootData = directoryCache.get('');
+  entryList.textContent = '';
+  if (!rootData) {
+    const loading = document.createElement('div');
+    loading.className = 'empty-list';
+    loading.textContent = directoryRequests.has('') ? 'Loading artifacts…' : 'No artifacts loaded.';
+    entryList.appendChild(loading);
+    return;
+  }
+
+  const query = search.value.trim().toLowerCase();
+  const rootList = document.createElement('ul');
+  rootList.className = 'tree-list';
+  const rootItem = document.createElement('li');
+  rootItem.className = 'tree-item';
+  const rootRow = document.createElement('button');
+  rootRow.type = 'button';
+  rootRow.className = 'tree-row folder root-tree-row';
+  if (!activeDirectory) rootRow.classList.add('active-folder');
+  rootRow.setAttribute('aria-expanded', String(rootExpanded));
+  rootRow.title = 'artifacts';
+
+  const rootChevron = document.createElement('span');
+  rootChevron.className = 'tree-chevron';
+  setChevronIcon(rootChevron, rootExpanded, directoryRequests.has(''));
+  const rootIcon = document.createElement('span');
+  setEntryIcon(rootIcon, true, rootExpanded);
+  const rootName = document.createElement('span');
+  rootName.className = 'entry-name';
+  rootName.textContent = 'artifacts';
+  const rootMeta = document.createElement('span');
+  rootMeta.className = 'entry-meta';
+  rootMeta.textContent = `${rootData.entries.length} item${rootData.entries.length === 1 ? '' : 's'}`;
+  rootRow.append(rootChevron, rootIcon, rootName, rootMeta);
+  rootRow.addEventListener('click', () => {
+    rootExpanded = !rootExpanded;
+    activeDirectory = '';
+    renderBreadcrumbs();
+    renderTree();
+  });
+  rootItem.appendChild(rootRow);
+
+  const tree = createTreeList(rootData.entries, query);
+  tree.classList.add('root-children');
+  if (rootExpanded || query) {
+    if (tree.childElementCount) rootItem.appendChild(tree);
+    else {
+      const empty = document.createElement('div');
+      empty.className = 'empty-list';
+      empty.textContent = query ? 'No matching loaded files or folders.' : 'The artifact folder is empty.';
+      rootItem.appendChild(empty);
+    }
+  }
+  rootList.appendChild(rootItem);
+  entryList.appendChild(rootList);
+}
+async function expandDirectory(path, updateHistory = false) {
+  const normalized = normalizePath(path);
+  activeDirectory = normalized;
+  expandedPaths.add(normalized);
+  renderBreadcrumbs();
+  renderTree();
+  await loadDirectoryData(normalized);
+  renderTree();
+  if (updateHistory) setHistory(normalized, true);
+}
+async function revealDirectory(path, updateHistory = false) {
+  const normalized = normalizePath(path);
+  await loadDirectoryData('');
+  let current = '';
+  for (const part of normalized.split('/').filter(Boolean)) {
+    current = current ? `${current}/${part}` : part;
+    expandedPaths.add(current);
+    await loadDirectoryData(current);
+  }
+  activeDirectory = normalized;
+  renderBreadcrumbs();
+  renderTree();
+  if (updateHistory) setHistory(normalized, true);
+}
+function addPreviewAction(label, href, primary = false) {
+  const anchor = document.createElement('a');
+  anchor.className = 'button' + (primary ? ' primary' : '');
+  anchor.href = href;
+  anchor.textContent = label;
+  if (label === 'Open raw') { anchor.target = '_blank'; anchor.rel = 'noopener'; }
+  previewActions.appendChild(anchor);
+}
+function renderCode(content) {
+  const pre = document.createElement('pre');
+  pre.className = 'code-view';
+  const lines = content.split('\n');
+  lines.forEach((line, index) => {
+    const row = document.createElement('span');
+    row.className = 'code-line';
+    const number = document.createElement('span');
+    number.className = 'line-number';
+    number.textContent = String(index + 1);
+    const value = document.createElement('span');
+    value.className = 'line-text';
+    value.textContent = line || ' ';
+    row.append(number, value);
+    pre.appendChild(row);
+  });
+  previewBody.appendChild(pre);
+}
+function safeUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('#') || raw.startsWith('/') || raw.startsWith('./') || raw.startsWith('../')) return raw;
+  try {
+    const parsed = new URL(raw, window.location.href);
+    return ['http:', 'https:', 'mailto:'].includes(parsed.protocol) ? raw : '';
+  } catch (_) {
+    return '';
+  }
+}
+function renderMarkdownInline(text) {
+  let value = escapeHtml(text);
+  const codeTokens = [];
+  value = value.replace(/`([^`\n]+)`/g, (_, code) => {
+    // Use private-use Unicode sentinels so later Markdown substitutions cannot
+    // accidentally interpret the placeholder itself as emphasis.
+    const token = `\uE000${codeTokens.length}\uE001`;
+    codeTokens.push(`<code>${code}</code>`);
+    return token;
+  });
+  value = value.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+[&quot;'][^)]*[&quot;'])?\)/g, (_, alt, href) => {
+    const safe = safeUrl(href.replaceAll('&amp;', '&'));
+    return safe ? `<img src="${escapeHtml(safe)}" alt="${alt}">` : `![${alt}](${href})`;
+  });
+  value = value.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+[&quot;'][^)]*[&quot;'])?\)/g, (_, label, href) => {
+    const safe = safeUrl(href.replaceAll('&amp;', '&'));
+    return safe ? `<a href="${escapeHtml(safe)}" target="_blank" rel="noopener">${label}</a>` : `[${label}](${href})`;
+  });
+  value = value.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+  // CommonMark does not treat underscores inside words (for example
+  // component_abap or hana_db) as emphasis delimiters.
+  value = value.replace(/(^|[^A-Za-z0-9])__([^_\n]+)__(?=$|[^A-Za-z0-9])/g, '$1<strong>$2</strong>');
+  value = value.replace(/~~([^~\n]+)~~/g, '<del>$1</del>');
+  value = value.replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>');
+  value = value.replace(/(^|[^A-Za-z0-9])_([^_\n]+)_(?=$|[^A-Za-z0-9])/g, '$1<em>$2</em>');
+  codeTokens.forEach((htmlValue, index) => {
+    value = value.split(`\uE000${index}\uE001`).join(htmlValue);
+  });
+  return value;
+}
+function isMarkdownTableSeparator(line) {
+  const cells = line.trim().replace(/^\||\|$/g, '').split('|').map(x => x.trim());
+  return cells.length > 0 && cells.every(cell => /^:?-{3,}:?$/.test(cell));
+}
+function splitMarkdownTableRow(line) {
+  return line.trim().replace(/^\||\|$/g, '').split('|').map(cell => cell.trim());
+}
+function markdownToHtml(content) {
+  const lines = String(content || '').replace(/\r\n?/g, '\n').split('\n');
+  const out = [];
+  let index = 0;
+  let paragraph = [];
+  let listType = null;
+  let blockquote = [];
+  const flushParagraph = () => {
+    if (!paragraph.length) return;
+    out.push(`<p>${renderMarkdownInline(paragraph.join(' '))}</p>`);
+    paragraph = [];
+  };
+  const closeList = () => {
+    if (!listType) return;
+    out.push(`</${listType}>`);
+    listType = null;
+  };
+  const flushBlockquote = () => {
+    if (!blockquote.length) return;
+    out.push(`<blockquote>${markdownToHtml(blockquote.join('\n'))}</blockquote>`);
+    blockquote = [];
+  };
+  const flushOpen = () => { flushParagraph(); closeList(); flushBlockquote(); };
+
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmed = line.trim();
+    // Support CommonMark-style fenced code blocks, including fences longer
+    // than three characters and the compact one-line form emitted by some
+    // validation report generators (for example: ```text value ```).
+    const inlineFence = line.match(/^\s*(`{3,}|~{3,})\s*([A-Za-z0-9_+.-]*)\s+(.+?)\s*\1\s*$/);
+    if (inlineFence) {
+      flushOpen();
+      const language = inlineFence[2].trim();
+      const className = language ? ` class="language-${escapeHtml(language.replace(/[^A-Za-z0-9_+.-]/g, ''))}"` : '';
+      out.push(`<pre><code${className}>${escapeHtml(inlineFence[3])}</code></pre>`);
+      index++;
+      continue;
+    }
+    const fence = line.match(/^\s*(`{3,}|~{3,})\s*([^`~]*)$/);
+    if (fence) {
+      flushOpen();
+      const marker = fence[1];
+      const fenceChar = marker[0];
+      const fenceLength = marker.length;
+      const language = fence[2].trim().split(/\s+/, 1)[0] || '';
+      const closingFence = new RegExp(`^\\s*${fenceChar === '`' ? '`' : '~'}{${fenceLength},}\\s*$`);
+      const code = [];
+      index++;
+      while (index < lines.length && !closingFence.test(lines[index])) {
+        code.push(lines[index]);
+        index++;
+      }
+      const className = language ? ` class="language-${escapeHtml(language.replace(/[^A-Za-z0-9_+.-]/g, ''))}"` : '';
+      out.push(`<pre><code${className}>${escapeHtml(code.join('\n'))}</code></pre>`);
+      if (index < lines.length) index++;
+      continue;
+    }
+    if (!trimmed) { flushOpen(); index++; continue; }
+    if (/^\s*([-*_])(?:\s*\1){2,}\s*$/.test(line)) { flushOpen(); out.push('<hr>'); index++; continue; }
+    const heading = line.match(/^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (heading) {
+      flushOpen();
+      const level = heading[1].length;
+      out.push(`<h${level}>${renderMarkdownInline(heading[2])}</h${level}>`);
+      index++;
+      continue;
+    }
+    if (line.startsWith('>')) {
+      flushParagraph(); closeList();
+      blockquote.push(line.replace(/^>\s?/, ''));
+      index++;
+      continue;
+    }
+    if (blockquote.length) flushBlockquote();
+    if (index + 1 < lines.length && line.includes('|') && isMarkdownTableSeparator(lines[index + 1])) {
+      flushParagraph(); closeList();
+      const headers = splitMarkdownTableRow(line);
+      const rows = [];
+      index += 2;
+      while (index < lines.length && lines[index].includes('|') && lines[index].trim()) {
+        rows.push(splitMarkdownTableRow(lines[index]));
+        index++;
+      }
+      out.push('<table><thead><tr>' + headers.map(cell => `<th>${renderMarkdownInline(cell)}</th>`).join('') + '</tr></thead><tbody>');
+      for (const row of rows) out.push('<tr>' + headers.map((_, cellIndex) => `<td>${renderMarkdownInline(row[cellIndex] || '')}</td>`).join('') + '</tr>');
+      out.push('</tbody></table>');
+      continue;
+    }
+    const unordered = line.match(/^\s{0,3}[-+*]\s+(.+)$/);
+    const ordered = line.match(/^\s{0,3}\d+[.)]\s+(.+)$/);
+    if (unordered || ordered) {
+      flushParagraph();
+      const nextType = ordered ? 'ol' : 'ul';
+      if (listType && listType !== nextType) closeList();
+      if (!listType) { listType = nextType; out.push(`<${listType}>`); }
+      let item = (ordered || unordered)[1];
+      const task = item.match(/^\[([ xX])\]\s+(.+)$/);
+      if (task) {
+        out.push(`<li class="task-item"><input type="checkbox" disabled${task[1].toLowerCase() === 'x' ? ' checked' : ''}>${renderMarkdownInline(task[2])}</li>`);
+      } else {
+        out.push(`<li>${renderMarkdownInline(item)}</li>`);
+      }
+      index++;
+      continue;
+    }
+    if (listType) closeList();
+    paragraph.push(trimmed);
+    index++;
+  }
+  flushOpen();
+  return out.join('');
+}
+function renderMarkdown(content) {
+  const article = document.createElement('article');
+  article.className = 'markdown-view';
+  article.innerHTML = markdownToHtml(content);
+  previewBody.appendChild(article);
+}
+function addMarkdownViewToggle(data) {
+  const group = document.createElement('div');
+  group.className = 'view-toggle';
+  const previewButton = document.createElement('button');
+  previewButton.type = 'button';
+  previewButton.textContent = 'Preview';
+  const codeButton = document.createElement('button');
+  codeButton.type = 'button';
+  codeButton.textContent = 'Code';
+  function activate(mode) {
+    markdownViewMode = mode;
+    previewButton.classList.toggle('active', mode === 'preview');
+    codeButton.classList.toggle('active', mode === 'code');
+    previewBody.textContent = '';
+    if (mode === 'preview') renderMarkdown(data.content || '');
+    else renderCode(data.content || '');
+  }
+  previewButton.addEventListener('click', () => activate('preview'));
+  codeButton.addEventListener('click', () => activate('code'));
+  group.append(previewButton, codeButton);
+  previewActions.appendChild(group);
+  activate(markdownViewMode);
+}
+function parseCsv(text) {
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  for (let index = 0; index < text.length; index++) {
+    const char = text[index];
+    if (quoted) {
+      if (char === '"' && text[index + 1] === '"') { field += '"'; index++; }
+      else if (char === '"') quoted = false;
+      else field += char;
+    } else if (char === '"') quoted = true;
+    else if (char === ',') { row.push(field); field = ''; }
+    else if (char === '\n') { row.push(field.replace(/\r$/, '')); rows.push(row); row = []; field = ''; }
+    else field += char;
+  }
+  if (field || row.length) { row.push(field.replace(/\r$/, '')); rows.push(row); }
+  return rows;
+}
+function renderCsv(content) {
+  const rows = parseCsv(content);
+  if (!rows.length) { renderCode(content); return; }
+  const wrap = document.createElement('div');
+  wrap.className = 'table-scroll';
+  const table = document.createElement('table');
+  table.className = 'csv-table';
+  const thead = document.createElement('thead');
+  const header = document.createElement('tr');
+  for (const value of rows[0]) { const th = document.createElement('th'); th.textContent = value; header.appendChild(th); }
+  thead.appendChild(header);
+  const tbody = document.createElement('tbody');
+  for (const values of rows.slice(1)) {
+    const tr = document.createElement('tr');
+    for (let index = 0; index < rows[0].length; index++) {
+      const td = document.createElement('td'); td.textContent = values[index] ?? ''; tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  }
+  table.append(thead, tbody); wrap.appendChild(table); previewBody.appendChild(wrap);
+}
+async function loadPreview(path, updateHistory = false) {
+  try {
+    const normalized = normalizePath(path);
+    await revealDirectory(parentPath(normalized), false);
+    const data = await getJson('/api/artifact-preview?path=' + encodeURIComponent(normalized));
+    selectedPath = data.path;
+    activeDirectory = data.parent;
+    renderBreadcrumbs();
+    renderTree();
+    previewName.textContent = data.name;
+    previewMeta.textContent = `${data.type} · ${data.size} · modified ${data.modified}` + (data.truncated ? ' · preview truncated' : '');
+    previewMeta.className = data.truncated ? 'truncated' : '';
+    currentPreviewData = data;
+    previewActions.textContent = '';
+    if (data.kind === 'markdown') { markdownViewMode = 'preview'; addMarkdownViewToggle(data); }
+    addPreviewAction('Download', data.download_url, false);
+    if (data.raw_url && data.kind === 'pdf') addPreviewAction('Open raw', data.raw_url, true);
+    if (data.kind !== 'markdown') previewBody.textContent = '';
+    if (data.kind === 'markdown') {
+      // addMarkdownViewToggle() already rendered the initial Markdown preview.
+      // Do not fall through to the unsupported-file fallback below.
+    } else if (data.kind === 'csv') renderCsv(data.content || '');
+    else if (['text', 'json', 'html'].includes(data.kind)) renderCode(data.content || '');
+    else if (data.kind === 'image') {
+      const wrap = document.createElement('div'); wrap.className = 'media-preview';
+      const image = document.createElement('img'); image.src = data.raw_url; image.alt = data.name; wrap.appendChild(image); previewBody.appendChild(wrap);
+    } else if (data.kind === 'pdf') {
+      const wrap = document.createElement('div'); wrap.className = 'media-preview';
+      const frame = document.createElement('iframe'); frame.src = data.raw_url; frame.title = data.name; wrap.appendChild(frame); previewBody.appendChild(wrap);
+    } else {
+      const empty = document.createElement('div');
+      empty.className = 'preview-empty';
+      const strong = document.createElement('strong');
+      strong.textContent = 'No inline preview available';
+      const detail = document.createElement('span');
+      detail.textContent = 'Use Download to open this file with its native application.';
+      empty.append(strong, detail);
+      previewBody.appendChild(empty);
+    }
+    if (updateHistory) setHistory(data.path, false);
+  } catch (error) {
+    previewBody.innerHTML = `<div class="notice">${escapeHtml(error.message)}</div>`;
+    throw error;
+  }
+}
+search.addEventListener('input', renderTree);
+document.getElementById('allFiles').addEventListener('click', () => {
+  expandedPaths.clear();
+  rootExpanded = true;
+  activeDirectory = '';
+  clearPreview();
+  renderBreadcrumbs();
+  loadDirectoryData('').then(() => {
+    renderTree();
+    setHistory('', true);
+  }).catch(showTreeError);
+});
+window.addEventListener('popstate', event => {
+  const state = event.state;
+  if (state && state.isDirectory) {
+    clearPreview();
+    revealDirectory(state.path, false).catch(showTreeError);
+  } else if (state) {
+    loadPreview(state.path, false).catch(() => {});
+  } else {
+    location.reload();
+  }
+});
+
+(async function init() {
+  await loadDirectoryData('');
+  if (initialIsFile) {
+    await loadPreview(initialPath, false);
+  } else {
+    clearPreview();
+    await revealDirectory(initialPath, false);
+  }
+  history.replaceState({path: initialPath, isDirectory: !initialIsFile}, '', browserUrl(initialPath, !initialIsFile));
+})().catch(showTreeError);
+</script>
+</body>
+</html>'''
+        document = document.replace("__UI_BUILD__", html.escape(UI_BUILD))
+        document = document.replace("__INITIAL_PATH__", json.dumps(initial_relative))
+        document = document.replace("__INITIAL_IS_FILE__", "true" if initial_is_file else "false")
+        body = document.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_artifact_directory_json(self, relative_value: str) -> None:
+        root = self.app.paths.artifact_root.resolve()
+        directory = self._artifact_target_from_relative(relative_value)
+        if directory is None or not directory.is_dir():
+            self._send_json({"error": "Artifact directory not found"}, HTTPStatus.NOT_FOUND)
+            return
         try:
             children = sorted(
-                (
-                    child
-                    for child in directory.iterdir()
-                    if not _is_hidden_artifact(child, root)
-                ),
+                (child for child in directory.iterdir() if not _is_hidden_artifact(child, root)),
                 key=lambda item: (not item.is_dir(), item.name.lower()),
             )
         except OSError:
-            self._send_json(
-                {"error": "Could not read artifact directory"},
-                HTTPStatus.INTERNAL_SERVER_ERROR,
-            )
+            self._send_json({"error": "Could not read artifact directory"}, HTTPStatus.INTERNAL_SERVER_ERROR)
             return
 
-        rows: list[str] = []
+        entries: list[dict[str, Any]] = []
         for child in children:
             resolved = _path_within(child, root)
             if resolved is None or _is_hidden_artifact(resolved, root):
@@ -1600,162 +3227,123 @@ class SAPUIHandler(BaseHTTPRequestHandler):
                 is_directory = resolved.is_dir()
             except OSError:
                 continue
-            href = _artifact_url(resolved, root, directory=is_directory)
-            display_name = child.name + ("/" if is_directory else "")
-            extension = child.suffix.lstrip(".").upper()
-            kind = "Folder" if is_directory else (extension or "File")
-            size = "—" if is_directory else _format_file_size(metadata.st_size)
-            modified = time.strftime("%Y-%m-%d %H:%M", time.localtime(metadata.st_mtime))
-            icon = "DIR" if is_directory else "FILE"
-            search_value = f"{child.name} {kind}".lower()
-            rows.append(
-                '<tr data-search="{}">'
-                '<td class="name-cell"><span class="file-icon" aria-hidden="true">{}</span>'
-                '<a href="{}">{}</a></td>'
-                '<td><span class="type-badge">{}</span></td>'
-                '<td class="size-cell">{}</td>'
-                '<td class="modified-cell">{}</td>'
-                '</tr>'.format(
-                    html.escape(search_value, quote=True),
-                    icon,
-                    html.escape(href, quote=True),
-                    html.escape(display_name),
-                    html.escape(kind),
-                    html.escape(size),
-                    html.escape(modified),
-                )
+            extension = resolved.suffix.lstrip(".").upper()
+            entries.append(
+                {
+                    "name": resolved.name,
+                    "path": self._artifact_relative(resolved),
+                    "is_dir": is_directory,
+                    "type": "Folder" if is_directory else (extension or "File"),
+                    "size": "—" if is_directory else _format_file_size(metadata.st_size),
+                    "size_bytes": 0 if is_directory else metadata.st_size,
+                    "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(metadata.st_mtime)),
+                }
             )
 
-        parent_link = ""
-        if relative.parts:
-            parent_link = (
-                f'<a class="button secondary" href="{html.escape(_artifact_url(directory.parent, root, directory=True), quote=True)}">'
-                '← Parent folder</a>'
-            )
-
-        empty_row = (
-            '<tr id="emptyRow"><td colspan="4" class="empty">No visible files or folders in this directory.</td></tr>'
-            if not rows
-            else '<tr id="emptyRow" hidden><td colspan="4" class="empty">No matching files or folders.</td></tr>'
+        relative = directory.relative_to(root)
+        breadcrumb_parts = [{"name": "artifacts", "path": ""}]
+        current = Path()
+        for part in relative.parts:
+            current /= part
+            breadcrumb_parts.append({"name": part, "path": current.as_posix()})
+        self._send_json(
+            {
+                "path": self._artifact_relative(directory),
+                "parent": self._artifact_relative(directory.parent) if relative.parts else None,
+                "breadcrumbs": breadcrumb_parts,
+                "entries": entries,
+            }
         )
-        document = f'''<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{html.escape(page_title)} · SAP Validation</title>
-<style>
-:root {{
-  --bg: #f4f6f8; --surface: #fff; --border: #d8dee6; --text: #17202a;
-  --muted: #667085; --primary: #175cd3; --shadow: none;
-}}
-* {{ box-sizing: border-box; }}
-body {{ margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif; }}
-a {{ color: var(--primary); text-decoration: none; }}
-a:hover {{ text-decoration: underline; }}
-header {{ background: var(--surface); color: var(--text); padding: .6rem max(20px, calc((100vw - 1200px) / 2)); border-bottom: 1px solid var(--border); }}
-.header-row {{ display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }}
-header strong {{ font-size: 1rem; font-weight: 600; }}
-header a {{ color: var(--primary); }}
-main {{ width: min(1200px, calc(100% - 32px)); margin: 1rem auto 2rem; }}
-.breadcrumbs {{ display: flex; flex-wrap: wrap; gap: .4rem; color: var(--muted); margin-bottom: .6rem; }}
-.separator {{ color: #98a2b3; }}
-.page-actions {{ display: flex; align-items: center; gap: .55rem; margin: 0 0 .6rem; }}
-.card {{ border: 1px solid var(--border); border-radius: 0; background: var(--surface); overflow: hidden; }}
-.card-header {{ padding: .7rem .9rem; border-bottom: 1px solid var(--border); background: var(--surface); }}
-h1 {{ margin: 0; font-size: 1.1rem; font-weight: 600; }}
-.subtitle {{ margin: .2rem 0 0; color: var(--muted); overflow-wrap: anywhere; }}
-.toolbar {{ display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; padding: .6rem .9rem; border-bottom: 1px solid var(--border); }}
-.toolbar-left, .toolbar-right {{ display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }}
-input[type="search"] {{ width: min(28rem, 75vw); min-height: 36px; border: 1px solid #b8c2cf; border-radius: 3px; padding: .4rem .65rem; font: inherit; }}
-.button {{ display: inline-flex; align-items: center; justify-content: center; min-height: 38px; padding: .46rem .8rem; border: 1px solid #b8c2cf; border-radius: 8px; font-weight: 500; }}
-.button.secondary {{ color: var(--text); background: #fff; }}
-.button.primary {{ color: #fff; background: var(--primary); border-color: var(--primary); }}
-.button.primary:hover {{ background: #1249aa; text-decoration: none; }}
-.return-button {{ min-width: 220px; }}
-.count {{ color: var(--muted); font-weight: 500; }}
-.table-wrap {{ overflow: auto; }}
-table {{ width: 100%; border-collapse: collapse; min-width: 650px; }}
-th, td {{ padding: .5rem .65rem; border-bottom: 1px solid var(--border); text-align: left; }}
-th {{ background: #f3f6f9; color: #344054; font-size: 12px; font-weight: 600; white-space: nowrap; }}
-tbody tr:nth-child(even) {{ background: #fbfcfd; }}
-tbody tr:hover {{ background: #f1f6ff; }}
-tbody tr:last-child td {{ border-bottom: 0; }}
-.name-cell {{ width: 55%; font-weight: 500; }}
-.file-icon {{ display: inline-grid; place-items: center; min-width: 2.8rem; margin-right: .5rem; border-radius: 5px; padding: .08rem .3rem; background: #eef2f6; color: #475467; font-size: 10px; font-weight: 500; }}
-.type-badge {{ display: inline-flex; border-radius: 999px; padding: .14rem .48rem; background: #eef2f6; color: #475467; font-size: 11px; font-weight: 500; }}
-.size-cell, .modified-cell {{ color: var(--muted); white-space: nowrap; }}
-.empty {{ padding: 2.5rem; text-align: center; color: var(--muted); }}
-.footer-note {{ padding: .75rem 1.1rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; background: #fbfcfd; }}
-@media (max-width: 650px) {{ main {{ width: min(100% - 20px, 1200px); }} .modified-cell {{ white-space: normal; }} }}
-</style>
-</head>
-<body>
-<header><div class="header-row"><strong>SAP Validation Outputs</strong></div></header>
-<main>
-  <nav class="breadcrumbs" aria-label="Breadcrumb">{breadcrumbs}</nav>
-  <div class="page-actions">
-    <a class="button primary return-button" href="/">← Return to validation UI</a>
-  </div>
-  <section class="card">
-    <div class="card-header">
-      <h1>{html.escape(page_title)}</h1>
-      <p class="subtitle">{html.escape(location)}</p>
-    </div>
-    <div class="toolbar">
-      <div class="toolbar-left">
-        <input id="fileSearch" type="search" placeholder="Filter files and folders" aria-label="Filter files and folders">
-        <span id="entryCount" class="count">{len(rows)} item(s)</span>
-      </div>
-      <div class="toolbar-right">{parent_link}</div>
-    </div>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Name</th><th>Type</th><th>Size</th><th>Modified</th></tr></thead>
-        <tbody>{''.join(rows)}{empty_row}</tbody>
-      </table>
-    </div>
-    <div class="footer-note">Hidden files and hidden directories are excluded from this browser.</div>
-  </section>
-</main>
-<script>
-'use strict';
-const search = document.getElementById('fileSearch');
-const count = document.getElementById('entryCount');
-const empty = document.getElementById('emptyRow');
-const rows = [...document.querySelectorAll('tbody tr[data-search]')];
-search.addEventListener('input', () => {{
-  const query = search.value.trim().toLowerCase();
-  let visible = 0;
-  for (const row of rows) {{
-    const show = !query || row.dataset.search.includes(query);
-    row.hidden = !show;
-    if (show) visible++;
-  }}
-  count.textContent = `${{visible}} item(s)`;
-  empty.hidden = visible !== 0;
-}});
-</script>
-</body>
-</html>'''.encode("utf-8")
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "text/html; charset=utf-8")
-        self.send_header("Content-Length", str(len(document)))
-        self.send_header("Cache-Control", "no-store")
-        self.send_header("X-Content-Type-Options", "nosniff")
-        self.end_headers()
-        self.wfile.write(document)
 
-    def _send_artifact(self, request_path: str) -> None:
-        target = self._artifact_target(request_path)
-        if target is None or not target.exists():
+    def _send_artifact_preview_json(self, relative_value: str) -> None:
+        target = self._artifact_target_from_relative(relative_value)
+        if target is None or not target.is_file():
+            self._send_json({"error": "Artifact file not found"}, HTTPStatus.NOT_FOUND)
+            return
+        try:
+            metadata = target.stat()
+        except OSError:
+            self._send_json({"error": "Could not read artifact metadata"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+            return
+
+        suffix = target.suffix.lower()
+        content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+        text_suffixes = {
+            ".txt", ".log", ".out", ".md", ".markdown", ".json", ".csv", ".tsv",
+            ".yaml", ".yml", ".ini", ".cfg", ".conf", ".xml", ".html", ".htm",
+            ".py", ".sh", ".j2", ".sql", ".properties",
+        }
+        if suffix in {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}:
+            kind = "image"
+        elif suffix == ".pdf":
+            kind = "pdf"
+        elif suffix == ".csv":
+            kind = "csv"
+        elif suffix == ".json":
+            kind = "json"
+        elif suffix in {".md", ".markdown"}:
+            kind = "markdown"
+        elif suffix in {".html", ".htm"}:
+            kind = "html"
+        elif content_type.startswith("text/") or suffix in text_suffixes:
+            kind = "text"
+        else:
+            kind = "binary"
+
+        content: str | None = None
+        truncated = False
+        if kind in {"csv", "json", "markdown", "html", "text", "binary"}:
+            try:
+                with target.open("rb") as handle:
+                    raw = handle.read(MAX_PREVIEW_BYTES + 1)
+            except OSError:
+                self._send_json({"error": "Could not read artifact"}, HTTPStatus.INTERNAL_SERVER_ERROR)
+                return
+            truncated = len(raw) > MAX_PREVIEW_BYTES
+            raw = raw[:MAX_PREVIEW_BYTES]
+
+            if kind == "binary":
+                # Unknown extensions are often controller output or configuration files.
+                # Preview them as source when they are valid UTF-8 text and contain no NULs.
+                if b"\x00" not in raw:
+                    try:
+                        content = raw.decode("utf-8")
+                    except UnicodeDecodeError:
+                        content = None
+                    else:
+                        kind = "text"
+            else:
+                content = raw.decode("utf-8", errors="replace")
+
+            if kind == "json" and content is not None:
+                try:
+                    content = json.dumps(json.loads(content), indent=2, ensure_ascii=False)
+                except json.JSONDecodeError:
+                    pass
+
+        self._send_json(
+            {
+                "name": target.name,
+                "path": self._artifact_relative(target),
+                "parent": self._artifact_relative(target.parent),
+                "kind": kind,
+                "type": suffix.lstrip(".").upper() or content_type,
+                "size": _format_file_size(metadata.st_size),
+                "size_bytes": metadata.st_size,
+                "modified": time.strftime("%Y-%m-%d %H:%M", time.localtime(metadata.st_mtime)),
+                "content": content,
+                "truncated": truncated,
+                "raw_url": self._artifact_raw_url(target),
+                "download_url": self._artifact_raw_url(target, download=True),
+            }
+        )
+
+    def _send_artifact_bytes(self, request_path: str, *, download: bool) -> None:
+        prefix = "/artifact-download/" if download else "/artifact-raw/"
+        raw_relative = unquote(request_path.removeprefix(prefix)).lstrip("/")
+        target = self._artifact_target_from_relative(raw_relative)
+        if target is None or not target.is_file():
             self._send_json({"error": "Artifact not found"}, HTTPStatus.NOT_FOUND)
-            return
-        if target.is_dir():
-            self._send_artifact_directory(target)
-            return
-        if not target.is_file():
-            self._send_json({"error": "Artifact is not a regular file"}, HTTPStatus.NOT_FOUND)
             return
         content_type = mimetypes.guess_type(target.name)[0] or "application/octet-stream"
         try:
@@ -1764,12 +3352,20 @@ search.addEventListener('input', () => {{
         except OSError:
             self._send_json({"error": "Could not read artifact"}, HTTPStatus.INTERNAL_SERVER_ERROR)
             return
+        disposition = "attachment" if download else "inline"
+        safe_name = target.name.replace('"', "")
         with handle:
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", content_type)
             self.send_header("Content-Length", str(size))
+            self.send_header("Content-Disposition", f'{disposition}; filename="{safe_name}"')
             self.send_header("Cache-Control", "no-store")
             self.send_header("X-Content-Type-Options", "nosniff")
+            if not download and content_type in {"text/html", "image/svg+xml"}:
+                self.send_header(
+                    "Content-Security-Policy",
+                    "sandbox; default-src 'none'; img-src data:; style-src 'unsafe-inline'",
+                )
             self.end_headers()
             shutil.copyfileobj(handle, self.wfile)
 
@@ -1794,7 +3390,9 @@ search.addEventListener('input', () => {{
         return payload
 
     def do_GET(self) -> None:  # noqa: N802
-        path = urlparse(self.path).path
+        parsed = urlparse(self.path)
+        path = parsed.path
+        query = parse_qs(parsed.query)
         if path == "/":
             self._send_html()
         elif path == "/favicon.ico":
@@ -1811,13 +3409,25 @@ search.addEventListener('input', () => {{
             )
         elif path == "/api/status":
             self._send_json(self.app.status_payload())
+        elif path == "/api/artifacts":
+            self._send_artifact_directory_json(query.get("path", [""])[0])
+        elif path == "/api/artifact-preview":
+            self._send_artifact_preview_json(query.get("path", [""])[0])
+        elif path.startswith("/artifact-raw/"):
+            self._send_artifact_bytes(path, download=False)
+        elif path.startswith("/artifact-download/"):
+            self._send_artifact_bytes(path, download=True)
         elif path == "/artifacts":
             self.send_response(HTTPStatus.PERMANENT_REDIRECT)
             self.send_header("Location", "/artifacts/")
             self.send_header("Content-Length", "0")
             self.end_headers()
         elif path.startswith("/artifacts/"):
-            self._send_artifact(path)
+            target = self._artifact_target(path)
+            if target is None or not target.exists():
+                self._send_json({"error": "Artifact not found"}, HTTPStatus.NOT_FOUND)
+            else:
+                self._send_artifact_browser(target)
         else:
             self._send_json({"error": "Not found"}, HTTPStatus.NOT_FOUND)
 
@@ -1979,6 +3589,7 @@ def main() -> int:
     browser_host = "127.0.0.1" if actual_host in {"0.0.0.0", "::"} else actual_host
     url = f"http://{browser_host}:{actual_port}/"
     print(f"SAP Validation UI: {url}", flush=True)
+    print(f"UI source: {Path(__file__).resolve()}", flush=True)
     print(f"UI build: {UI_BUILD}", flush=True)
     print("Press Ctrl+C to stop the UI server.", flush=True)
     server.terminal.show("UI active | requests 0 | idle")

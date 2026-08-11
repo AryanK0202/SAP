@@ -1,0 +1,23 @@
+---
+- name: "PREPATCH: determine host pre-patch status"
+  ansible.builtin.set_fact:
+    prepatch_host_status: >-
+      {{
+        'SKIPPED'
+        if prepatch_services | default([]) | length == 0
+        else 'RED'
+        if prepatch_services | selectattr('status', 'equalto', 'RED') | list | length > 0
+        else 'YELLOW'
+        if prepatch_services | selectattr('status', 'equalto', 'YELLOW') | list | length > 0
+        else 'GREEN'
+      }}
+    prepatch_collection_completed_at: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S UTC') }}"
+  tags: [always]
+
+- name: "PREPATCH: display host status"
+  ansible.builtin.debug:
+    msg: >-
+      {{ inventory_hostname }} pre-patch status={{ prepatch_host_status }};
+      services/checks={{ prepatch_services | default([]) | length }}
+  when: prepatch_services | default([]) | length > 0
+  tags: [always]

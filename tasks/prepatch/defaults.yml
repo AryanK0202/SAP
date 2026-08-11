@@ -1,0 +1,86 @@
+---
+# Compatibility/default layer for Claire's pre-patch checks.
+# Existing generated inventory values win when they are present.
+- name: "PREPATCH: derive HANA runtime aliases from generated inventory"
+  ansible.builtin.set_fact:
+    prepatch_run_mode: "{{ prepatch_mode | default('full') | lower }}"
+    sid_adm_user: "{{ hana_admin_user | default((hana_sid | lower) ~ 'adm') }}"
+    hana_hdb_home: "/usr/sap/{{ hana_sid }}/HDB{{ hana_instance_number }}"
+  tags: [always]
+
+- name: "PREPATCH: set codebase-compatible defaults"
+  ansible.builtin.set_fact:
+    validation_users: >-
+      {{ validation_users | default([sid_adm_user, 'sapadm', 'daaadm']) }}
+    validation_groups: >-
+      {{ validation_groups | default(['sapsys', 'sapinst']) }}
+    shared_mount_list: >-
+      {{
+        shared_mount_list
+        | default(
+            (expected_shared_mounts | default('')).split(',')
+            | map('trim')
+            | reject('equalto', '')
+            | list
+          )
+      }}
+    cron_pattern_list: >-
+      {{
+        cron_pattern_list
+        | default(
+            (expected_root_cron_patterns | default('aide,clamav,freshclam')).split(',')
+            | map('trim')
+            | reject('equalto', '')
+            | list
+          )
+      }}
+    hana_sld_registration_required: "{{ hana_sld_registration_required | default(false) }}"
+    hana_sld_registration_confirmed: "{{ hana_sld_registration_confirmed | default(false) }}"
+    clamsap_package_names: "{{ clamsap_package_names | default(['clamsap']) }}"
+    watchman_package_names: "{{ watchman_package_names | default(['watchman']) }}"
+    clamav_package_names: >-
+      {{ clamav_package_names | default(['clamav', 'clamav-daemon', 'clamav-server', 'clamav-update']) }}
+    clamav_service_names: >-
+      {{ clamav_service_names | default(['clamd.service', 'clamd@scan.service', 'clamav-daemon.service']) }}
+    prepatch_required_users: "{{ prepatch_required_users | default([sid_adm_user, 'sapadm']) }}"
+    prepatch_required_groups: "{{ prepatch_required_groups | default(['sapsys']) }}"
+    prepatch_clamsap_required: "{{ prepatch_clamsap_required | default(false) }}"
+    prepatch_clamav_required: "{{ prepatch_clamav_required | default(false) }}"
+    prepatch_watchman_required: "{{ prepatch_watchman_required | default(false) }}"
+    prepatch_diagnostic_agent_required: "{{ prepatch_diagnostic_agent_required | default(false) }}"
+    prepatch_disk_yellow_percent: "{{ prepatch_disk_yellow_percent | default(disk_warn_pct | default(80)) }}"
+    prepatch_disk_red_percent: "{{ prepatch_disk_red_percent | default(disk_fail_pct | default(90)) }}"
+    prepatch_memory_yellow_percent: "{{ prepatch_memory_yellow_percent | default(memory_warn_pct | default(85)) }}"
+    prepatch_memory_red_percent: "{{ prepatch_memory_red_percent | default(memory_fail_pct | default(95)) }}"
+    prepatch_swap_yellow_percent: "{{ prepatch_swap_yellow_percent | default(20) }}"
+    prepatch_swap_red_percent: "{{ prepatch_swap_red_percent | default(50) }}"
+    prepatch_load_yellow_per_cpu: "{{ prepatch_load_yellow_per_cpu | default(1.0) }}"
+    prepatch_load_red_per_cpu: "{{ prepatch_load_red_per_cpu | default(2.0) }}"
+    prepatch_critical_systemd_units: "{{ prepatch_critical_systemd_units | default([]) }}"
+    prepatch_sap_host_agent_required: >-
+      {{ prepatch_sap_host_agent_required | default((sap_host_agent | default({})).expected | default(true)) }}
+    prepatch_sapcontrol_path: "{{ prepatch_sapcontrol_path | default('/usr/sap/hostctrl/exe/sapcontrol') }}"
+    prepatch_saphostexec_path: "{{ prepatch_saphostexec_path | default('/usr/sap/hostctrl/exe/saphostexec') }}"
+    hana_replication_expected: "{{ hana_replication_expected | default(false) }}"
+    prepatch_hdbnsutil_path: "{{ prepatch_hdbnsutil_path | default(hana_hdb_home ~ '/exe/hdbnsutil') }}"
+    hana_hdbsql_userstore_key: >-
+      {{ hana_hdbsql_userstore_key | default(hdbsql_userkey | default(''), true) }}
+    prepatch_hdbsql_path: >-
+      {{ prepatch_hdbsql_path | default(hana_hdbsql_bin | default(hana_hdb_home ~ '/exe/hdbsql'), true) }}
+    prepatch_require_backup_check: "{{ prepatch_require_backup_check | default(false) }}"
+    prepatch_check_log_backup: "{{ prepatch_check_log_backup | default(true) }}"
+    prepatch_backup_yellow_hours: "{{ prepatch_backup_yellow_hours | default(24) }}"
+    prepatch_backup_red_hours: "{{ prepatch_backup_red_hours | default(48) }}"
+    prepatch_log_backup_yellow_hours: "{{ prepatch_log_backup_yellow_hours | default(1) }}"
+    prepatch_log_backup_red_hours: "{{ prepatch_log_backup_red_hours | default(4) }}"
+    prepatch_require_alert_check: "{{ prepatch_require_alert_check | default(false) }}"
+    prepatch_patch_staging_path: "{{ prepatch_patch_staging_path | default('/tmp') }}"
+    prepatch_patch_space_yellow_gb: "{{ prepatch_patch_space_yellow_gb | default(10) }}"
+    prepatch_patch_space_red_gb: "{{ prepatch_patch_space_red_gb | default(5) }}"
+    prepatch_hdblcm_path: >-
+      {{ prepatch_hdblcm_path | default('/hana/shared/' ~ hana_sid ~ '/hdblcm/hdblcm') }}
+    prepatch_pending_reboot_is_red: "{{ prepatch_pending_reboot_is_red | default(false) }}"
+    prepatch_hana_data_path: "{{ prepatch_hana_data_path | default('/hana/data/' ~ hana_sid) }}"
+    prepatch_hana_log_path: "{{ prepatch_hana_log_path | default('/hana/log/' ~ hana_sid) }}"
+    prepatch_hana_shared_path: "{{ prepatch_hana_shared_path | default('/hana/shared/' ~ hana_sid) }}"
+  tags: [always]
