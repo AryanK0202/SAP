@@ -1114,6 +1114,18 @@
       "ansible_tag": "failed_systemd_units",
       "task_file": "tasks/prepatch/collect_os_health.yml",
       "implementation_status": "future"
+    },
+    {
+      "id": "disk_striping",
+      "category":"Build Validation",
+      "group":"System Health",
+      "contributor":"Aryan",
+      "task":"Check taht LVM logical volumes are striped correctly",
+      "scope":"host",
+      "component":"operating_system",
+      "ansible_tag":"disk_striping",
+      "task_file": "tasks/build_validation/system_health.yml",
+      "implementation_status":"runs_today"
     }
   ],
   "profiles": {
@@ -1210,7 +1222,8 @@
         "memory_usage",
         "os_facts_snapshot",
         "default_pfl_icm_ports",
-        "cvers_report"
+        "cvers_report",
+        "disk_striping"
       ],
       "extra_vars": {
         "hana_validate_incrond": false,

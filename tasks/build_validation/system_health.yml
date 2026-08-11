@@ -172,3 +172,75 @@
   become: false
   when: save_raw_outputs | bool
   tags: [services_green]
+
+- name: "SYSTEM HEALTH: collect LVM striping data"
+  ansible.builtin.shell: |
+    lvs -o vg_name,lv_name,lv_size,stripes --reportformat json
+  args:
+    executable: /bin/bash
+  become: true
+  register: lvs_raw
+  changed_when: false
+  failed_when: false
+  tags: [disk_striping]
+
+- name: "PARSE: extract LVM striping data"
+  ansible.builtin.set_fact:
+    lvm_volumes: >-
+      {{
+        (lvs_raw.stdout | default('{}') | from_json).report[0].lv
+        if (lvs_raw.rc | default(99) | int) == 0 and (lvs_raw.stdout | default('') | trim | length > 0)
+        else []
+      }}
+  tags: [disk_striping]
+
+- name: "REPORT: record disk striping result for each volume"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'HANA Disk Striping (' ~ (item.lv_name | default('unknown')) ~ ')',
+        'status': (
+          'PASS'
+          if (item.stripes | default(1) | int) >= 2
+          else 'FAIL'
+        ),
+        'details': (
+          'Volume ' ~ (item.lv_name | default('unknown')) ~
+          ' has ' ~ (item.stripes | default('unknown') | string) ~ ' stripes.'
+        )
+      }] }}
+  loop: "{{ lvm_volumes }}"
+  when: (lvs_raw.rc | default(99) | int) == 0 and lvm_volumes | length > 0
+  tags: [disk_striping]
+
+- name: "REPORT: record disk striping error"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'HANA Disk Striping',
+        'status': 'ERROR',
+        'details': (
+          'LVM data could not be gathered or no volumes found; rc=' ~
+          (lvs_raw.rc | default('unknown') | string) ~
+          (
+            '; stderr=' ~ (lvs_raw.stderr | default('') | trim)
+            if lvs_raw.stderr | default('') | trim | length > 0
+            else ''
+          )
+        )
+      }] }}
+  when: (lvs_raw.rc | default(99) | int) != 0 or ((lvs_raw.rc | default(99) | int) == 0 and lvm_volumes | length == 0)
+  tags: [disk_striping]
+
+- name: "SYSTEM HEALTH: save LVM raw output"
+  ansible.builtin.copy:
+    dest: "{{ host_raw_dir }}/lvs_disk_striping.txt"
+    mode: "0644"
+    content: "{{ lvs_raw | default({'error': 'lvs_raw was completely undefined'}) | to_nice_json}}"
+  delegate_to: localhost
+  become: false
+  when: save_raw_outputs | default(false) | bool
+  tags: [disk_striping]
+
+  
+
