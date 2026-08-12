@@ -282,7 +282,7 @@ def compile_inventory(
             "physical_ip": row.get("physical_ip", "").strip(),
             "physical_hostname": row.get("physical_hostname", "").strip(),
             "environment": row.get("environment", "unassigned").strip() or "unassigned",
-            "landscape": row.get("landscape", "unassigned").strip() or "unassigned",
+            "customer": row.get("customer", "unassigned").strip() or "unassigned",
             "credential_profile": profile_name,
             "host_agent_expected": _as_bool(
                 row.get("host_agent_expected", ""), host_agent_default
@@ -307,7 +307,7 @@ def compile_inventory(
         servers[server_id]["instances"].append(_derive_instance(row))
 
     server_overrides = overrides.get("servers", {})
-    landscape_overrides = overrides.get("landscapes", {})
+    customer_overrides = overrides.get("customers", {})
     normalized_servers: dict[str, Any] = {}
     groups: dict[str, set[str]] = {"sap_hosts": set()}
 
@@ -318,7 +318,7 @@ def compile_inventory(
             "physical_ip": server.get("physical_ip", ""),
             "physical_hostname": server.get("physical_hostname", ""),
             "sap_environment": server["environment"],
-            "sap_landscape_id": server["landscape"],
+            "sap_customer": server["customer"],
             "sap_instances": server["instances"],
             "sap_host_agent": {"expected": server["host_agent_expected"]},
         }
@@ -332,16 +332,16 @@ def compile_inventory(
             host_vars["ansible_python_interpreter"] = connection["python_interpreter"]
 
         host_vars.update(_compatibility_vars(server["instances"]))
-        landscape_data = landscape_overrides.get(server["landscape"], {})
-        if isinstance(landscape_data, dict):
-            host_vars = _deep_merge(host_vars, landscape_data)
+        customer_data = customer_overrides.get(server["customer"], {})
+        if isinstance(customer_data, dict):
+            host_vars = _deep_merge(host_vars, customer_data)
         specific = server_overrides.get(server_id, {})
         if isinstance(specific, dict):
             host_vars = _deep_merge(host_vars, specific)
 
         groups["sap_hosts"].add(server_id)
         groups.setdefault(f"environment_{_slug(server['environment'])}", set()).add(server_id)
-        groups.setdefault(f"landscape_{_slug(server['landscape'])}", set()).add(server_id)
+        groups.setdefault(f"customer_{_slug(server['customer'])}", set()).add(server_id)
 
         components = {i["component"] for i in server["instances"]}
         if server["host_agent_expected"]:

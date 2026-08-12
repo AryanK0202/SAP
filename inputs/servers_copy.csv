@@ -1,2 +1,2 @@
-server_id,address,physical_ip,physical_hostname,environment,landscape,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
-sap-sandbox-01,54.84.120.187,,,,,sap-lab,,,,,,
+server_id,address,physical_ip,physical_hostname,environment,customer,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
+sap-sandbox-01,54.84.120.187,,,,RTS,sap-lab,,,,,,

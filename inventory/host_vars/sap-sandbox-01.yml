@@ -3,7 +3,7 @@ server_id: sap-sandbox-01
 physical_ip: 10.0.22.162
 physical_hostname: sid-hdb-s4h.dummy.nodomain
 sap_environment: sandbox
-sap_landscape_id: s4h-sandbox
+sap_customer: RTS
 
 ansible_port: 22
 ansible_user: root

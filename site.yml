@@ -241,7 +241,7 @@
               'physical_hostname': (physical_hostname | default('')),
               'physical_ip': (physical_ip | default('')),
               'environment': (sap_environment | default('')),
-              'landscape': (sap_landscape_id | default('')),
+              'customer': (sap_customer | default('')),
               'groups': group_names,
               'sap_instances': (sap_instances | default([]))
             } | to_nice_json

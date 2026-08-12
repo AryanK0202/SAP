@@ -78,7 +78,7 @@ def aggregate_run(
                 "physical_hostname": source.get("physical_hostname", ""),
                 "physical_ip": source.get("physical_ip", ""),
                 "environment": source.get("environment", ""),
-                "landscape": source.get("landscape", ""),
+                "customer": source.get("customer", ""),
                 "components": source.get("components", []),
                 "sap_instances": source.get("instances", []),
             }
@@ -114,7 +114,7 @@ def aggregate_run(
             "server_id": server_id,
             "address": metadata.get("ansible_host", source.get("address", "")),
             "environment": metadata.get("environment", source.get("environment", "")),
-            "landscape": metadata.get("landscape", source.get("landscape", "")),
+            "customer": metadata.get("customer", source.get("customer", "")),
             "components": metadata.get("components", source.get("components", [])),
             "execution_status": execution_status,
             "overall_status": overall_status,
@@ -137,7 +137,7 @@ def aggregate_run(
                 {
                     "server_id": server_id,
                     "environment": summary["environment"],
-                    "landscape": summary["landscape"],
+                    "customer": summary["customer"],
                     "check": result.get("check", ""),
                     "status": result.get("status", ""),
                     "details": result.get("details", ""),
@@ -169,7 +169,7 @@ def aggregate_run(
 
     with (run_dir / "_summary.csv").open("w", newline="", encoding="utf-8") as handle:
         fieldnames = [
-            "server_id", "address", "environment", "landscape", "components",
+            "server_id", "address", "environment", "customer", "components",
             "execution_status", "overall_status", "pass_count", "fail_count",
             "error_count", "warn_count", "skipped_count", "result_count", "report_file",
         ]
@@ -181,7 +181,7 @@ def aggregate_run(
             writer.writerow(export)
 
     with (run_dir / "_results.csv").open("w", newline="", encoding="utf-8") as handle:
-        fieldnames = ["server_id", "environment", "landscape", "check", "status", "details"]
+        fieldnames = ["server_id", "environment", "customer", "check", "status", "details"]
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(flattened_results)
@@ -194,7 +194,7 @@ def aggregate_run(
         f"- **Check results:** {totals['pass']} pass, {totals['fail']} fail, "
         f"{totals['error']} error, {totals['warn']} warn, {totals['skipped']} skipped",
         "",
-        "| Server | Environment | Landscape | Components | Execution | Overall | Results |",
+        "| Server | Environment | Customer | Components | Execution | Overall | Results |",
         "|---|---|---|---|---:|---:|---:|",
     ]
     for item in server_summaries:
@@ -208,7 +208,7 @@ def aggregate_run(
             f"{item['warn_count']}W/{item['skipped_count']}S"
         )
         lines.append(
-            f"| {server_link} | {item['environment']} | {item['landscape']} | "
+            f"| {server_link} | {item['environment']} | {item['customer']} | "
             f"{', '.join(item.get('components', []))} | {item['execution_status']} | "
             f"{item['overall_status']} | {result_text} |"
         )

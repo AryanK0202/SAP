@@ -40,7 +40,7 @@ MAX_BODY_BYTES = 1_000_000
 MAX_LOG_LINES = 5_000
 MAX_PREVIEW_BYTES = 1_000_000
 RUN_DIRECTORY_RE = re.compile(r"^Run directory:\s*(?P<path>.+?)\s*$")
-UI_BUILD = "2026.08.06-artifact-tree-v10-vscode-code-blocks"
+UI_BUILD = "2026.08.12-customer-grouping-v11"
 
 
 def _truthy(value: Any) -> bool:
@@ -308,7 +308,7 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
                 "physical_ip": (row.get("physical_ip") or "").strip(),
                 "physical_hostname": (row.get("physical_hostname") or "").strip(),
                 "environment": (row.get("environment") or "").strip(),
-                "landscape": (row.get("landscape") or "").strip(),
+                "customer": (row.get("customer") or "").strip(),
                 "credential_profile": (row.get("credential_profile") or "").strip(),
                 "components": sorted(components_by_server.get(server_id, set())),
                 "enabled": _truthy(row.get("enabled", "true")),
@@ -904,7 +904,7 @@ td:first-child, th:first-child { text-align: center; width: 64px; }
 .check-table th:nth-child(1), .check-table td:nth-child(1) { width: 52px; }
 .check-table th:nth-child(2), .check-table td:nth-child(2) { width: 210px; }
 .check-table th:nth-child(3), .check-table td:nth-child(3) { width: 195px; }
-.check-table th:nth-child(4), .check-table td:nth-child(4) { width: 145px; }
+.check-table th:nth-child(4), .check-table td:nth-child(4) { width: 200px; }
 .check-table th:nth-child(5), .check-table td:nth-child(5) { width: 135px; }
 .check-table th:nth-child(6), .check-table td:nth-child(6) { width: 135px; white-space: nowrap; }
 .check-table th:nth-child(7), .check-table td:nth-child(7) { width: auto; }
@@ -1089,7 +1089,7 @@ pre {
   <div class="card-body">
     <div class="system-filter-row">
       <label class="control"><span class="control-label">Environment</span><select id="environmentFilter"><option value="">All environments</option></select></label>
-      <label class="control"><span class="control-label">Landscape</span><select id="landscapeFilter"><option value="">All landscapes</option></select></label>
+      <label class="control"><span class="control-label">Customer</span><select id="customerFilter"><option value="">All customers</option></select></label>
       <label class="control"><span class="control-label">Component</span><select id="componentFilter"><option value="">All components</option></select></label>
       <label class="control"><span class="control-label">Search systems</span><input id="systemSearch" type="search" placeholder="Server, hostname, address, component"></label>
       <div class="system-selection-actions visibility-actions">
@@ -1103,7 +1103,7 @@ pre {
       <th>Select</th>
       <th><button type="button" data-sort="server_id">System</button></th>
       <th><button type="button" data-sort="environment">Environment</button></th>
-      <th><button type="button" data-sort="landscape">Landscape</button></th>
+      <th><button type="button" data-sort="customer">Customer</button></th>
       <th><button type="button" data-sort="components">Components</button></th>
       <th><button type="button" data-sort="physical_hostname">Hostname</button></th>
       <th><button type="button" data-sort="address">Address</button></th>
@@ -1282,7 +1282,7 @@ function renderSystems() {
   for (const server of rows) {
     const tr = document.createElement('tr');
     tr.dataset.environment = server.environment;
-    tr.dataset.landscape = server.landscape;
+    tr.dataset.customer = server.customer;
     tr.dataset.components = server.components.join(' ');
     tr.dataset.search = Object.values(server).flat().join(' ').toLowerCase();
     const checkbox = document.createElement('input');
@@ -1290,7 +1290,7 @@ function renderSystems() {
     checkbox.disabled = !server.enabled; checkbox.checked = selected.has(server.server_id);
     checkbox.setAttribute('aria-label', `Select ${server.server_id}`);
     checkbox.addEventListener('change', updateCounts);
-    const cells = [checkbox, server.server_id, server.environment || '—', server.landscape || '—',
+    const cells = [checkbox, server.server_id, server.environment || '—', server.customer || '—',
       server.components.join(', ') || '—', server.physical_hostname || '—', server.address || '—', server.enabled ? 'Yes' : 'No'];
     for (const value of cells) {
       const td = document.createElement('td');
@@ -1305,12 +1305,12 @@ function renderSystems() {
 
 function applySystemFilters() {
   const environment = el('environmentFilter').value;
-  const landscape = el('landscapeFilter').value;
+  const customer = el('customerFilter').value;
   const component = el('componentFilter').value;
   const search = el('systemSearch').value.trim().toLowerCase();
   for (const row of el('systemsTable').querySelectorAll('tbody tr')) {
     const visible = (!environment || row.dataset.environment === environment)
-      && (!landscape || row.dataset.landscape === landscape)
+      && (!customer || row.dataset.customer === customer)
       && (!component || row.dataset.components.split(' ').includes(component))
       && (!search || row.dataset.search.includes(search));
     row.classList.toggle('hidden', !visible);
@@ -1481,7 +1481,7 @@ function renderChecks() {
           <col style="width:52px">
           <col style="width:195px">
           <col style="width:195px">
-          <col style="width:130px">
+          <col style="width:180px">
           <col style="width:115px">
           <col style="width:125px">
           <col style="width:160px">
@@ -1849,14 +1849,14 @@ async function init() {
   const response = await fetch('/api/config');
   config = await response.json();
   addOptions(el('environmentFilter'), uniqueSorted(config.servers.map(x => x.environment)));
-  addOptions(el('landscapeFilter'), uniqueSorted(config.servers.map(x => x.landscape)));
+  addOptions(el('customerFilter'), uniqueSorted(config.servers.map(x => x.customer)));
   addOptions(el('componentFilter'), uniqueSorted(config.servers.flatMap(x => x.components)));
   addOptions(el('profile'), Object.keys(config.profiles).sort());
   el('batchSize').value = config.defaults.batch_size;
   el('forks').value = config.defaults.forks;
   renderSystems(); renderChecks();
 
-  for (const id of ['environmentFilter','landscapeFilter','componentFilter']) el(id).addEventListener('change', applySystemFilters);
+  for (const id of ['environmentFilter','customerFilter','componentFilter']) el(id).addEventListener('change', applySystemFilters);
   el('systemSearch').addEventListener('input', applySystemFilters);
   el('checkSearch').addEventListener('input', applyCheckFilters);
   el('showUnavailable').addEventListener('change', applyCheckFilters);

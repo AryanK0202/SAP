@@ -93,7 +93,7 @@ inputs/instances.csv
 
 ### `--overrides PATH`
 
-Host and landscape exception JSON. Default:
+Host and customer exception JSON. Default:
 
 ```text
 inputs/overrides.json
@@ -180,12 +180,12 @@ Restrict to the generated `environment_<name>` group:
 ./sap_validate.py --environment production --profile production-readiness
 ```
 
-### `--landscape NAME`
+### `--customer NAME`
 
-Restrict to one SAP landscape:
+Restrict to one customer:
 
 ```bash
-./sap_validate.py --landscape s4p --profile production-readiness
+./sap_validate.py --customer RTS --profile production-readiness
 ```
 
 ### `--component NAME`
@@ -216,7 +216,7 @@ Pass an Ansible limit pattern or an exact comma-separated server list:
 ./sap_validate.py --limit "hdb-prod-001,hdb-prod-002" --profile strict-full
 ```
 
-Environment, landscape, component, and limit filters are intersected.
+Environment, customer, component, and limit filters are intersected.
 
 ### `--target-group GROUP`
 
@@ -412,11 +412,11 @@ reported findings independently of process execution.
   --forks 40
 ```
 
-### Validate one landscape and keep verbose evidence
+### Validate one customer and keep verbose evidence
 
 ```bash
 ./sap_validate.py \
-  --landscape s4p \
+  --customer RTS \
   --profile production-readiness \
   --save-raw-outputs \
   -vv

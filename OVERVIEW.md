@@ -62,9 +62,7 @@ jq -r '.profiles["fully-tested"].tags[]' checks_catalog.json
 
 // This works for:
 --limit component_{component name}
---limit landscape_{landscape name} // etc.
-// and in the future
---limit customer_{customer name} //
+--limit customer_{customer name} // etc.
 
 // Basic join logic works, for example:
 // Intersections using :& and exclusions using :!
