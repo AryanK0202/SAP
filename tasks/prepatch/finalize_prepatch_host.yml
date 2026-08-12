@@ -6,7 +6,10 @@
         'SKIPPED'
         if prepatch_services | default([]) | length == 0
         else 'RED'
-        if prepatch_services | selectattr('status', 'equalto', 'RED') | list | length > 0
+        if (
+          prepatch_services | selectattr('status', 'equalto', 'RED') | list | length > 0
+          or prepatch_services | selectattr('status', 'equalto', 'ERROR') | list | length > 0
+        )
         else 'YELLOW'
         if prepatch_services | selectattr('status', 'equalto', 'YELLOW') | list | length > 0
         else 'GREEN'

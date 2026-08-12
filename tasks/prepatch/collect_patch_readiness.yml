@@ -107,6 +107,8 @@
       ansible.builtin.stat:
         path: "{{ prepatch_hdblcm_path }}"
       register: prepatch_hdblcm_stat
+      ignore_errors: "{{ not (hana_strict_validation | default(false) | bool) }}"
+
     - name: "STATUS: Add HDBLCM tool result"
       ansible.builtin.set_fact:
         prepatch_services: >-
@@ -118,4 +120,18 @@
               'details':prepatch_hdblcm_path, 'source':'collect_patch_readiness.yml'
             }]
           }}
+      when: not (prepatch_hdblcm_stat.failed | default(false) | bool)
+
+    - name: "ERROR: Record HDBLCM collection failure"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{
+            prepatch_services + [{
+              'category':'Patch Readiness', 'name':'HDBLCM Tool',
+              'status':'ERROR', 'observed':'collection failed',
+              'details':prepatch_hdblcm_stat.msg | default('stat failed without an error message', true),
+              'source':'collect_patch_readiness.yml'
+            }]
+          }}
+      when: prepatch_hdblcm_stat.failed | default(false) | bool
   tags: [prepatch_hdblcm_tool]

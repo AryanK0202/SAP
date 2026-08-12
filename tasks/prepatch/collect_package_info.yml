@@ -47,12 +47,52 @@
 - name: "CHECK: Gather installed package information"
   ansible.builtin.package_facts:
     manager: auto
+  register: prepatch_package_facts_result
   changed_when: false
+  ignore_errors: "{{ not (hana_strict_validation | default(false) | bool) }}"
+  tags: [prepatch_clamav]
+
+- name: "ERROR: Record package inventory collection failure"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [{
+            'category': 'Security Services',
+            'name': 'ClamAV Package Inventory Collection',
+            'status': 'ERROR',
+            'observed': 'collection failed',
+            'details': prepatch_package_facts_result.msg
+                       | default('package_facts failed without an error message', true),
+            'source': 'collect_package_info.yml'
+          }]
+      }}
+  when: prepatch_package_facts_result.failed | default(false) | bool
   tags: [prepatch_clamav]
 
 - name: "CHECK: Gather service information"
   ansible.builtin.service_facts:
+  register: prepatch_service_facts_result
   changed_when: false
+  ignore_errors: "{{ not (hana_strict_validation | default(false) | bool) }}"
+  tags: [prepatch_clamav]
+
+- name: "ERROR: Record service inventory collection failure"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [{
+            'category': 'Security Services',
+            'name': 'ClamAV Service Inventory Collection',
+            'status': 'ERROR',
+            'observed': 'collection failed',
+            'details': prepatch_service_facts_result.msg
+                       | default('service_facts failed without an error message', true),
+            'source': 'collect_package_info.yml'
+          }]
+      }}
+  when: prepatch_service_facts_result.failed | default(false) | bool
   tags: [prepatch_clamav]
 
 - name: "FACT: Detect installed ClamAV packages"
@@ -60,9 +100,10 @@
     clamav_installed_packages: >-
       {{
         (clamav_package_names | default(['clamav', 'clamav-daemon', 'clamav-server']))
-        | select('in', ansible_facts.packages.keys() | list)
+        | select('in', (ansible_facts.packages | default({})).keys() | list)
         | list
       }}
+  when: not (prepatch_package_facts_result.failed | default(false) | bool)
   tags: [prepatch_clamav]
 
 - name: "FACT: Detect ClamAV daemon services"
@@ -70,9 +111,10 @@
     clamav_detected_services: >-
       {{
         (clamav_service_names | default(['clamd.service', 'clamd@scan.service', 'clamav-daemon.service']))
-        | select('in', ansible_facts.services.keys() | list)
+        | select('in', (ansible_facts.services | default({})).keys() | list)
         | list
       }}
+  when: not (prepatch_service_facts_result.failed | default(false) | bool)
   tags: [prepatch_clamav]
 
 - name: "FACT: Initialize ClamAV service results"
@@ -96,7 +138,8 @@
           }
         ]
       }}
-  loop: "{{ clamav_detected_services }}"
+  loop: "{{ clamav_detected_services | default([]) }}"
+  when: not (prepatch_service_facts_result.failed | default(false) | bool)
   tags: [prepatch_clamav]
 
 - name: "FACT: Determine ClamAV validation status"
@@ -117,6 +160,9 @@
         | list
         | length > 0
       }}
+  when:
+    - not (prepatch_package_facts_result.failed | default(false) | bool)
+    - not (prepatch_service_facts_result.failed | default(false) | bool)
   tags: [prepatch_clamav]
 
 - name: "FACT: Set overall ClamAV daemon validation result"
@@ -128,6 +174,9 @@
         and clamav_service_enabled
         and clamav_service_running
       }}
+  when:
+    - not (prepatch_package_facts_result.failed | default(false) | bool)
+    - not (prepatch_service_facts_result.failed | default(false) | bool)
   tags: [prepatch_clamav]
 
 - name: "CHECK: Watchman package status"
