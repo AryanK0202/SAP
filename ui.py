@@ -40,7 +40,7 @@ MAX_BODY_BYTES = 1_000_000
 MAX_LOG_LINES = 5_000
 MAX_PREVIEW_BYTES = 1_000_000
 RUN_DIRECTORY_RE = re.compile(r"^Run directory:\s*(?P<path>.+?)\s*$")
-UI_BUILD = "2026.08.12-customer-grouping-v11"
+UI_BUILD = "2026.08.12-system-diagram-v14"
 
 
 def _truthy(value: Any) -> bool:
@@ -273,6 +273,7 @@ class RepositoryData:
     profiles: dict[str, list[str]]
     batch_size: int
     forks: int
+    system_diagrams: dict[str, dict[str, Any]] = field(repr=False)
     known_server_ids: set[str] = field(repr=False)
     selectable_check_ids: set[str] = field(repr=False)
 
@@ -284,13 +285,35 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
     defaults = _read_json(paths.defaults)
 
     components_by_server: dict[str, set[str]] = {}
+    instances_by_server: dict[str, list[dict[str, str]]] = {}
+    instance_fields = (
+        "component",
+        "sid",
+        "instance_number",
+        "instance_name",
+        "virtual_hostname",
+        "admin_user",
+        "role",
+        "tenant",
+        "userstore_key",
+        "hdbsql_bin",
+        "profile_dir",
+        "default_pfl_path",
+        "db_schema",
+    )
     for row in instance_rows:
         server_id = (row.get("server_id") or "").strip()
         component = (row.get("component") or "").strip()
-        if server_id and component:
+        if not server_id:
+            continue
+        if component:
             components_by_server.setdefault(server_id, set()).add(component)
+        instances_by_server.setdefault(server_id, []).append(
+            {field_name: (row.get(field_name) or "").strip() for field_name in instance_fields}
+        )
 
     servers: list[dict[str, Any]] = []
+    system_diagrams: dict[str, dict[str, Any]] = {}
     known_server_ids: set[str] = set()
     for row in server_rows:
         server_id = (row.get("server_id") or "").strip()
@@ -301,19 +324,23 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
                 f"Unsupported server_id {server_id!r}; UI-safe IDs may contain letters, "
                 "numbers, '.', '_' and '-'."
             )
-        servers.append(
-            {
-                "server_id": server_id,
-                "address": (row.get("address") or "").strip(),
-                "physical_ip": (row.get("physical_ip") or "").strip(),
-                "physical_hostname": (row.get("physical_hostname") or "").strip(),
-                "environment": (row.get("environment") or "").strip(),
-                "customer": (row.get("customer") or "").strip(),
-                "credential_profile": (row.get("credential_profile") or "").strip(),
-                "components": sorted(components_by_server.get(server_id, set())),
-                "enabled": _truthy(row.get("enabled", "true")),
-            }
-        )
+        server_payload = {
+            "server_id": server_id,
+            "address": (row.get("address") or "").strip(),
+            "physical_ip": (row.get("physical_ip") or "").strip(),
+            "physical_hostname": (row.get("physical_hostname") or "").strip(),
+            "environment": (row.get("environment") or "").strip(),
+            "customer": (row.get("customer") or "").strip(),
+            "credential_profile": (row.get("credential_profile") or "").strip(),
+            "components": sorted(components_by_server.get(server_id, set())),
+            "enabled": _truthy(row.get("enabled", "true")),
+        }
+        servers.append(server_payload)
+        system_diagrams[server_id] = {
+            **server_payload,
+            "host_agent_expected": _truthy(row.get("host_agent_expected", "false")),
+            "instances": instances_by_server.get(server_id, []),
+        }
     servers.sort(key=lambda item: item["server_id"].lower())
     known_server_ids = {item["server_id"] for item in servers if item["enabled"]}
 
@@ -377,6 +404,7 @@ def load_repository_data(paths: UIPaths) -> RepositoryData:
         profiles=profiles,
         batch_size=batch_size,
         forks=forks,
+        system_diagrams=system_diagrams,
         known_server_ids=known_server_ids,
         selectable_check_ids=selectable_check_ids,
     )
@@ -580,6 +608,312 @@ def _terminate_process(process: subprocess.Popen[str]) -> None:
         except OSError:
             pass
     process.terminate()
+
+
+_COMPONENT_LABELS = {
+    "abap": "ABAP Application",
+    "ascs": "ABAP Central Services",
+    "hana": "HANA Database",
+    "webdispatcher": "Web Dispatcher",
+    "host_agent": "SAP Host Agent",
+}
+
+
+def _component_label(value: str) -> str:
+    normalized = value.strip().lower()
+    return _COMPONENT_LABELS.get(normalized, value.strip().replace("_", " ").title() or "SAP Component")
+
+
+def _system_diagram_document(diagram: dict[str, Any]) -> str:
+    """Render a dependency-free system topology page using the main UI's visual language."""
+
+    def esc(value: Any, fallback: str = "—") -> str:
+        text = str(value or "").strip()
+        return html.escape(text if text else fallback)
+
+    def detail_row(label: str, value: Any) -> str:
+        text = str(value or "").strip()
+        if not text:
+            return ""
+        return f'<div class="detail-row"><dt>{html.escape(label)}</dt><dd>{html.escape(text)}</dd></div>'
+
+    instances = diagram.get("instances", [])
+    if not isinstance(instances, list):
+        instances = []
+
+    cards: list[str] = []
+    for instance in instances:
+        if not isinstance(instance, dict):
+            continue
+        component = str(instance.get("component") or "").strip()
+        instance_name = str(instance.get("instance_name") or "").strip()
+        instance_number = str(instance.get("instance_number") or "").strip()
+        instance_identity = instance_name or (f"Instance {instance_number}" if instance_number else "Configured instance")
+        role = str(instance.get("role") or "").strip()
+        badge = f'<span class="count-pill">{html.escape(role)}</span>' if role else ""
+        details = "".join(
+            (
+                detail_row("SID", instance.get("sid")),
+                detail_row("Instance", instance_identity),
+                detail_row("Virtual hostname", instance.get("virtual_hostname")),
+                detail_row("Admin user", instance.get("admin_user")),
+                detail_row("Tenant", instance.get("tenant")),
+                detail_row("Database schema", instance.get("db_schema")),
+                detail_row("Profile directory", instance.get("profile_dir")),
+                detail_row("Default profile", instance.get("default_pfl_path")),
+                detail_row("hdbsql", instance.get("hdbsql_bin")),
+            )
+        )
+        cards.append(
+            f"""<article class="component-node">
+  <div class="component-node-header">
+    <div>
+      <div class="node-kicker">SAP component</div>
+      <h3>{esc(_component_label(component))}</h3>
+    </div>
+    {badge}
+  </div>
+  <dl class="detail-list">{details or '<div class="empty-detail">No additional instance details recorded.</div>'}</dl>
+</article>"""
+        )
+
+    if bool(diagram.get("host_agent_expected")):
+        cards.append(
+            """<article class="component-node">
+  <div class="component-node-header">
+    <div>
+      <div class="node-kicker">Host service</div>
+      <h3>SAP Host Agent</h3>
+    </div>
+    <span class="count-pill">Expected</span>
+  </div>
+  <dl class="detail-list">
+    <div class="detail-row"><dt>Scope</dt><dd>Physical host</dd></div>
+    <div class="detail-row"><dt>Instance</dt><dd>Host-level service</dd></div>
+  </dl>
+</article>"""
+        )
+
+    component_count = len(cards)
+    branch_segments = "".join('<span class="branch-segment"></span>' for _ in range(component_count))
+
+    if not cards:
+        cards.append(
+            """<div class="empty-components">No SAP instances or host-level SAP services are recorded for this system.</div>"""
+        )
+
+    server_id = esc(diagram.get("server_id"))
+    status_text = "Enabled" if bool(diagram.get("enabled")) else "Disabled"
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{server_id} · System Diagram · SAP Validation</title>
+<style>
+:root {{
+  color-scheme: light;
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-muted: #f8fafc;
+  --border: #d8dee6;
+  --border-strong: #b8c2cf;
+  --text: #17202a;
+  --muted: #5f6b7a;
+  --primary: #175cd3;
+  --primary-hover: #1249aa;
+  --radius: 0;
+}}
+* {{ box-sizing: border-box; }}
+body {{
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+}}
+a {{ color: var(--primary); text-decoration: none; }}
+a:hover {{ text-decoration: underline; }}
+button, .button {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  padding: .45rem .8rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+  text-decoration: none;
+}}
+button:hover, .button:hover {{ background: #eef2f6; text-decoration: none; }}
+a:focus-visible, button:focus-visible {{ outline: 3px solid rgba(23, 92, 211, .22); outline-offset: 2px; }}
+.app-header {{
+  margin: 0 0 .9rem;
+  padding: .55rem 0;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}}
+.header-row {{
+  display: flex;
+  width: min(1800px, calc(100% - 32px));
+  margin: 0 auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}}
+.app-header h1 {{ margin: 0; font-size: 1.05rem; font-weight: 600; letter-spacing: -.01em; }}
+.app-header p {{ margin: .15rem 0 0; color: var(--muted); font-size: 12.5px; }}
+.app-shell {{ width: min(1800px, calc(100% - 32px)); margin: 0 auto 2rem; }}
+.card {{
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}}
+.card-header {{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem .9rem .6rem;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}}
+.card h2 {{ margin: 0; font-size: 1rem; font-weight: 600; }}
+.card-subtitle {{ margin: .15rem 0 0; color: var(--muted); font-size: 12.5px; }}
+.card-body {{ padding: 1rem .9rem 1.2rem; }}
+.count-pill {{
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  border-radius: 999px;
+  padding: .15rem .6rem;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: #344054;
+  background: #eef2f6;
+}}
+.diagram {{ max-width: 1300px; margin: 0 auto; }}
+.tier-label {{
+  position: relative;
+  z-index: 1;
+  width: fit-content;
+  margin: 0 auto .45rem;
+  padding: 0 .5rem;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}}
+.server-node, .component-node {{
+  border: 1px solid var(--border);
+  background: var(--surface);
+}}
+.server-node {{ max-width: 760px; margin: 0 auto; padding: .8rem .9rem; }}
+.node-kicker {{ margin-bottom: .12rem; color: var(--muted); font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }}
+.server-node h2, .component-node h3 {{ margin: 0; font-size: 1rem; font-weight: 600; }}
+.server-grid {{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .65rem 1rem; margin-top: .75rem; }}
+.server-field span {{ display: block; color: var(--muted); font-size: 12px; }}
+.server-field strong {{ display: block; margin-top: .05rem; font-weight: 500; overflow-wrap: anywhere; }}
+.trunk {{ width: 1px; height: 34px; margin: 0 auto; background: var(--border-strong); }}
+.branch {{
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(var(--component-count), minmax(0, 1fr));
+  gap: .75rem;
+  height: 25px;
+}}
+.branch::after {{ content: ""; position: absolute; left: 50%; top: -25px; width: 1px; height: 25px; background: var(--border-strong); }}
+.branch:empty {{ display: none; }}
+.branch-segment {{
+  height: 1px;
+  border-top: 1px solid var(--border-strong);
+  margin-left: -.375rem;
+  margin-right: -.375rem;
+}}
+.branch-segment:first-child {{ margin-left: 50%; }}
+.branch-segment:last-child {{ margin-right: 50%; }}
+.branch-segment:only-child {{ border-top: 0; margin-left: 0; margin-right: 0; }}
+.components-grid {{ display: grid; grid-template-columns: repeat(var(--component-count), minmax(0, 1fr)); gap: .75rem; }}
+.component-node {{ position: relative; min-width: 0; }}
+.component-node::before {{ content: ""; position: absolute; left: 50%; top: -26px; width: 1px; height: 25px; background: var(--border-strong); }}
+.component-node-header {{ display: flex; align-items: flex-start; justify-content: space-between; gap: .65rem; padding: .65rem .7rem; border-bottom: 1px solid var(--border); background: var(--surface-muted); }}
+.detail-list {{ margin: 0; padding: .25rem .7rem .45rem; }}
+.detail-row {{ display: grid; grid-template-columns: minmax(95px, .8fr) minmax(0, 1.3fr); gap: .6rem; padding: .38rem 0; border-bottom: 1px solid var(--border); }}
+.detail-row:last-child {{ border-bottom: 0; }}
+.detail-row dt {{ color: var(--muted); font-size: 12px; }}
+.detail-row dd {{ margin: 0; overflow-wrap: anywhere; }}
+.empty-detail, .empty-components {{ color: var(--muted); padding: .8rem; }}
+.empty-components {{ border: 1px solid var(--border); background: var(--surface-muted); text-align: center; grid-column: 1 / -1; }}
+.diagram-note {{ margin: 1rem 0 0; padding-top: .75rem; border-top: 1px solid var(--border); color: var(--muted); font-size: 12.5px; }}
+@media (max-width: 720px) {{
+  .server-grid {{ grid-template-columns: 1fr; }}
+  .components-grid {{ grid-template-columns: 1fr; }}
+  .branch {{ display: none; }}
+  .component-node::before {{ top: -13px; height: 12px; }}
+  .trunk {{ height: 20px; }}
+  .detail-row {{ grid-template-columns: 1fr; gap: .05rem; }}
+}}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-row">
+    <div>
+      <h1>SAP Validation</h1>
+      <p>System Diagram · {server_id}</p>
+    </div>
+    <a class="button" href="/#systemsHeading">Back to systems</a>
+  </div>
+</header>
+<main class="app-shell">
+  <section class="card" aria-labelledby="diagramHeading">
+    <div class="card-header">
+      <div>
+        <h2 id="diagramHeading">System Diagram</h2>
+        <p class="card-subtitle">Physical host and the SAP components configured on it.</p>
+      </div>
+      <span class="count-pill">{status_text}</span>
+    </div>
+    <div class="card-body">
+      <div class="diagram" style="--component-count: {max(component_count, 1)}">
+        <div class="tier-label">Physical / SSH server</div>
+        <section class="server-node" aria-label="Physical server">
+          <div class="node-kicker">System</div>
+          <h2>{server_id}</h2>
+          <div class="server-grid">
+            <div class="server-field"><span>Hostname</span><strong>{esc(diagram.get('physical_hostname'))}</strong></div>
+            <div class="server-field"><span>Physical IP</span><strong>{esc(diagram.get('physical_ip'))}</strong></div>
+            <div class="server-field"><span>SSH address</span><strong>{esc(diagram.get('address'))}</strong></div>
+            <div class="server-field"><span>Environment</span><strong>{esc(diagram.get('environment'))}</strong></div>
+            <div class="server-field"><span>Customer</span><strong>{esc(diagram.get('customer'))}</strong></div>
+            <div class="server-field"><span>Credential profile</span><strong>{esc(diagram.get('credential_profile'))}</strong></div>
+          </div>
+        </section>
+        <div class="trunk" aria-hidden="true"></div>
+        <div class="tier-label">SAP components / instances</div>
+        <div class="branch" aria-hidden="true">{branch_segments}</div>
+        <div class="components-grid">
+          {''.join(cards)}
+        </div>
+        <p class="diagram-note">The hierarchy is built from the same <code>servers.csv</code> and <code>instances.csv</code> inventory that powers the Systems table. Each component card is therefore attached to this physical server record rather than being shown as a separate host.</p>
+      </div>
+    </div>
+  </section>
+</main>
+</body>
+</html>"""
 
 
 HTML = r'''<!doctype html>
@@ -839,6 +1173,21 @@ tbody tr:hover { background: #f1f6ff; }
 td:first-child, th:first-child { text-align: center; width: 64px; }
 .muted { color: var(--muted); }
 .hidden { display: none !important; }
+.system-cell { display: flex; align-items: center; gap: .4rem; white-space: nowrap; }
+.system-diagram-button {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  border-color: var(--border);
+  border-radius: 6px;
+  background: #eef2f6;
+  color: var(--muted);
+}
+.system-diagram-button:hover:not(:disabled) { background: #e4e7ec; color: #475467; }
+.system-diagram-button svg { display: block; width: 14px; height: 14px; }
 .check-tabs {
   display: grid;
   grid-template-columns: repeat(4, minmax(140px, 1fr));
@@ -1290,7 +1639,23 @@ function renderSystems() {
     checkbox.disabled = !server.enabled; checkbox.checked = selected.has(server.server_id);
     checkbox.setAttribute('aria-label', `Select ${server.server_id}`);
     checkbox.addEventListener('change', updateCounts);
-    const cells = [checkbox, server.server_id, server.environment || '—', server.customer || '—',
+
+    const systemCell = document.createElement('div');
+    systemCell.className = 'system-cell';
+    const systemName = document.createElement('span');
+    systemName.textContent = server.server_id;
+    const diagramButton = document.createElement('button');
+    diagramButton.type = 'button';
+    diagramButton.className = 'system-diagram-button';
+    diagramButton.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" focusable="false"><rect x="6" y="1.5" width="4" height="3" rx=".5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M8 4.5V7M3 7h10M3 7v2M8 7v2M13 7v2" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><rect x="1.5" y="9" width="3" height="3" rx=".4" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="6.5" y="9" width="3" height="3" rx=".4" fill="none" stroke="currentColor" stroke-width="1.2"/><rect x="11.5" y="9" width="3" height="3" rx=".4" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>';
+    diagramButton.title = `View system diagram for ${server.server_id}`;
+    diagramButton.setAttribute('aria-label', `View system diagram for ${server.server_id}`);
+    diagramButton.addEventListener('click', () => {
+      window.location.href = `/system-diagram?server=${encodeURIComponent(server.server_id)}`;
+    });
+    systemCell.append(systemName, diagramButton);
+
+    const cells = [checkbox, systemCell, server.environment || '—', server.customer || '—',
       server.components.join(', ') || '—', server.physical_hostname || '—', server.address || '—', server.enabled ? 'Yes' : 'No'];
     for (const value of cells) {
       const td = document.createElement('td');
@@ -1915,6 +2280,19 @@ class SAPUIHandler(BaseHTTPRequestHandler):
 
     def _send_html(self) -> None:
         body = HTML.encode("utf-8")
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_system_diagram(self, server_id: str) -> None:
+        diagram = self.app.data.system_diagrams.get(server_id)
+        if diagram is None:
+            self._send_json({"error": "System not found"}, HTTPStatus.NOT_FOUND)
+            return
+        body = _system_diagram_document(diagram).encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -3395,6 +3773,8 @@ window.addEventListener('popstate', event => {
         query = parse_qs(parsed.query)
         if path == "/":
             self._send_html()
+        elif path == "/system-diagram":
+            self._send_system_diagram(query.get("server", [""])[0])
         elif path == "/favicon.ico":
             self._send_empty()
         elif path == "/api/config":

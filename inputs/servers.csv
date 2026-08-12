@@ -10,4 +10,3 @@ demo-rts-prod-01,192.0.2.41,10.250.0.41,rts-prod-01.demo.local,production,RTS,sa
 demo-rts-qa-01,192.0.2.42,10.250.0.42,rts-qa-01.demo.local,qa,RTS,sap-lab,,,,,true,false
 demo-rts-dev-01,192.0.2.43,10.250.0.43,rts-dev-01.demo.local,development,RTS,sap-lab,,,,,true,false
 demo-umbrella-prod-01,192.0.2.51,10.250.0.51,umbrella-prod-01.demo.local,production,UMBRELLA,sap-lab,,,,,true,false
-EOF
