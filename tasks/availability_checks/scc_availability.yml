@@ -1,0 +1,37 @@
+--- 
+# Read only SAP Cloud connector availability checks.
+# Tags: scc_availability
+
+- name: "SYSTEM HEALTH: check if SAP Cloud Connector service is active"
+  ansible.builtin.command: systemctl is-active scc_daemon
+  become: true
+  register: scc_service
+  changed_when: false
+  failed_when: false
+  tags: [scc_availability]
+
+- name: "SYSTEM HEALTH: validate Web UI reachability"
+  ansible.builtin.uri:
+    url: "https://localhost:8443"
+    validate_certs: no
+    return_content: yes
+  register: web_validation
+  failed_when: false
+  tags: [scc_availability]
+
+- name: "REPORT: record SCC availability results"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'SAP Cloud Connector Availability',
+        'status': (
+          'PASS'
+          if (scc_service.rc | default(99) | int == 0) and (web_validation.status | default(0) | int == 200)
+          else 'FAIL'
+        ),
+        'details': (
+          'Service is ' ~ ('active' if (scc_service.rc | default(99) | int == 0) else 'inactive') ~
+          '; Web UI HTTP status: ' ~ (web_validation.status | default('unreachable') | string)
+        )
+      }] }}
+  tags: [scc_availability]

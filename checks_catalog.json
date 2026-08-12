@@ -1114,6 +1114,18 @@
       "ansible_tag": "filesystem_validations",
       "task_file": "tasks/health_checks/filesystem_validations.yml",
       "implementation_status": "runs_today"
+    },
+    {
+      "id": "scc_availability",
+      "category": "System Health",
+      "group": "Availability",
+      "contributor": "Aryan",
+      "task": "Check SAP Cloud connector service and Web ui reachability",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "scc_availability",
+      "task_file": "tasks/availability/scc_availability.yml",
+      "implementation_status": "runs_today"
     }
   ],
   "profiles": {
