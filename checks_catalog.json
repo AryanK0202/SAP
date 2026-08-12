@@ -696,30 +696,6 @@
       "implementation_status": "manual_only"
     },
     {
-      "id": "fs_capacity",
-      "category": "Health",
-      "group": "Filesystem",
-      "contributor": "Aryan",
-      "task": "Check all SAP/HANA filesystem capacity",
-      "scope": "host",
-      "component": "os",
-      "ansible_tag": "filesystem",
-      "task_file": "tasks/health/collect_os_health.yml",
-      "implementation_status": "future"
-    },
-    {
-      "id": "fs_inode_usage",
-      "category": "Health",
-      "group": "Filesystem",
-      "contributor": "Aryan",
-      "task": "Check filesystem inode usage",
-      "scope": "host",
-      "component": "os",
-      "ansible_tag": "inode",
-      "task_file": "tasks/health/collect_os_health.yml",
-      "implementation_status": "future"
-    },
-    {
       "id": "prepatch_clamsap",
       "category": "Prepatch",
       "group": "Package Information",
@@ -1126,6 +1102,18 @@
       "ansible_tag":"disk_striping",
       "task_file": "tasks/build_validation/system_health.yml",
       "implementation_status":"runs_today"
+    },
+    {
+      "id": "filesystem_validations",
+      "category": "System Health",
+      "group": "Filesystem",
+      "contributor": "Aryan",
+      "task": "Check filesystem usage, inodes and record live I/O metrics",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "filesystem_validations",
+      "task_file": "tasks/health_checks/filesystem_validations.yml",
+      "implementation_status": "runs_today"
     }
   ],
   "profiles": {

@@ -122,6 +122,9 @@
 
     - name: "LOAD: monitoring checks"
       ansible.builtin.import_tasks: tasks/build_validation/monitoring.yml
+    
+    - name: "LOAD: filesystem validation checks"
+      ansible.builtin.import_tasks: tasks/health_checks/filesystem_validations.yml
 
     # tasks/cloud.yml is intentionally not imported until an AWS DLM policy
     # ID and controller credentials are confirmed.

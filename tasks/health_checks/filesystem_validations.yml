@@ -1,0 +1,68 @@
+---
+# filesystem health checks
+# Tags: filesystem_validations
+
+- name: "PARSE: compile expected SAP mounts"
+  ansible.builtin.set_fact:
+    target_mounts: >-
+      {{
+        (hana_mounts_to_validate | default([])) +
+        (('component_abap' in group_names or 'component_hana' in group_names) | ternary(['/usr/sap'], []))
+      }}
+  tags: [filesystem_validations]
+
+- name: "REPORT: record filesystem threshold results"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'Filesystem Threshold (' ~ item.mount ~ ')',
+        'status': (
+          'PASS'
+          if (((item.size_total - item.size_available) / item.size_total) * 100) | float < (max_usage_pct | default(85) | float)
+          else 'FAIL'
+        ),
+        'details': (
+          'Usage is ' ~ ((((item.size_total - item.size_available) / item.size_total) * 100) | round(2) | string) ~
+          '%; Max allowed is ' ~ (max_usage_pct | default(85) | string) ~ '%.'
+        )
+      }] }}
+  loop: "{{ ansible_facts['mounts'] | default([]) }}"
+  when: item.mount in target_mounts and (item.size_total | default(0) | int) > 0
+  tags: [filesystem_validations]
+
+- name: "REPORT: record filesystem inode results"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'Filesystem Inodes (' ~ item.mount ~ ')',
+        'status': (
+          'PASS'
+          if (item.inode_available | default(0) | int) > 0
+          else 'FAIL'
+        ),
+        'details': (
+          (item.inode_available | string) ~ ' inodes available.'
+        )
+      }] }}
+  loop: "{{ ansible_facts['mounts'] | default([]) }}"
+  when: item.mount in target_mounts and item.inode_total is defined 
+  tags: [filesystem_validations]
+
+- name: "SYSTEM HEALTH: save I/O metrics as raw output"
+  ansible.builtin.copy:
+    dest: "{{ host_raw_dir }}/iostat_metrics.txt"
+    mode: "0644"
+    content: |
+      rc={{ live_io_stats.rc | default('unknown') }}
+      stdout:
+      {{ live_io_stats.stdout | default('') }}
+
+      stderrL
+      {{ live_io_stats.stderr | default('') }}
+  delegate_to: localhost
+  become: false
+  when: save_raw_outputs | default(false) | bool
+  tags: [filesystem_validations]
+
+
+      
