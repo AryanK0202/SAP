@@ -11,4 +11,3 @@ PREPATCH_INTEGRATION.md
 /prepatch/*
 !prepatch/.gitkeep
 additional_checks.json
-CHANGES.md

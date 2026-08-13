@@ -1,0 +1,165 @@
+---
+- name: "CHECK: ClamSAP package status"
+  ansible.builtin.shell: |
+    set -o pipefail
+    found=0
+
+    for pkg in {{ clamsap_package_names | join(' ') }}; do
+      if command -v dpkg >/dev/null 2>&1; then
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+          echo "$pkg:installed"
+          found=1
+        fi
+      elif command -v rpm >/dev/null 2>&1; then
+        if rpm -q "$pkg" >/dev/null 2>&1; then
+          echo "$pkg:installed"
+          found=1
+        fi
+      fi
+    done
+
+    if [ "$found" -eq 0 ]; then
+      echo "MISSING"
+    fi
+  args:
+    executable: /bin/bash
+  register: clamsap_package_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: ClamSAP service/process status"
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl is-active clamsap 2>/dev/null || true
+    fi
+
+    ps -ef | grep -i '[c]lamsap' || true
+  args:
+    executable: /bin/bash
+  register: clamsap_runtime_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: Gather installed package information"
+  ansible.builtin.package_facts:
+    manager: auto
+  changed_when: false
+
+- name: "CHECK: Gather service information"
+  ansible.builtin.service_facts:
+  changed_when: false
+
+- name: "FACT: Detect installed ClamAV packages"
+  ansible.builtin.set_fact:
+    clamav_installed_packages: >-
+      {{
+        (clamav_package_names | default(['clamav', 'clamav-daemon', 'clamav-server']))
+        | select('in', ansible_facts.packages.keys() | list)
+        | list
+      }}
+
+- name: "FACT: Detect ClamAV daemon services"
+  ansible.builtin.set_fact:
+    clamav_detected_services: >-
+      {{
+        (clamav_service_names | default(['clamd.service', 'clamd@scan.service', 'clamav-daemon.service']))
+        | select('in', ansible_facts.services.keys() | list)
+        | list
+      }}
+
+- name: "FACT: Initialize ClamAV service results"
+  ansible.builtin.set_fact:
+    clamav_service_results: []
+
+- name: "FACT: Collect ClamAV daemon service states"
+  ansible.builtin.set_fact:
+    clamav_service_results: >-
+      {{
+        clamav_service_results
+        +
+        [
+          {
+            'name': item,
+            'enabled': ansible_facts.services[item].status
+                       | default('unknown'),
+            'state': ansible_facts.services[item].state
+                     | default('unknown')
+          }
+        ]
+      }}
+  loop: "{{ clamav_detected_services }}"
+
+- name: "FACT: Determine ClamAV validation status"
+  ansible.builtin.set_fact:
+    clamav_installed: "{{ clamav_installed_packages | length > 0 }}"
+    clamav_service_found: "{{ clamav_detected_services | length > 0 }}"
+    clamav_service_enabled: >-
+      {{
+        clamav_service_results
+        | selectattr('enabled', 'equalto', 'enabled')
+        | list
+        | length > 0
+      }}
+    clamav_service_running: >-
+      {{
+        clamav_service_results
+        | selectattr('state', 'equalto', 'running')
+        | list
+        | length > 0
+      }}
+
+- name: "FACT: Set overall ClamAV daemon validation result"
+  ansible.builtin.set_fact:
+    clamav_validation_passed: >-
+      {{
+        clamav_installed
+        and clamav_service_found
+        and clamav_service_enabled
+        and clamav_service_running
+      }}
+
+- name: "CHECK: Watchman package status"
+  ansible.builtin.shell: |
+    set -o pipefail
+    found=0
+
+    for pkg in {{ watchman_package_names | join(' ') }}; do
+      if command -v dpkg >/dev/null 2>&1; then
+        if dpkg -s "$pkg" >/dev/null 2>&1; then
+          echo "$pkg:installed"
+          found=1
+        fi
+      elif command -v rpm >/dev/null 2>&1; then
+        if rpm -q "$pkg" >/dev/null 2>&1; then
+          echo "$pkg:installed"
+          found=1
+        fi
+      fi
+    done
+
+    if [ "$found" -eq 0 ]; then
+      echo "MISSING"
+    fi
+  args:
+    executable: /bin/bash
+  register: watchman_package_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: Watchman service/process status"
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    if command -v systemctl >/dev/null 2>&1; then
+      systemctl is-active watchman@root.service 2>/dev/null || true
+      systemctl is-active watchman@root.socket 2>/dev/null || true
+    fi
+
+    ps -ef | grep -i '[w]atchman' || true
+  args:
+    executable: /bin/bash
+  register: watchman_runtime_check
+  changed_when: false
+  failed_when: false

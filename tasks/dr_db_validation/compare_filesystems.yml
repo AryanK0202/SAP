@@ -1,0 +1,32 @@
+---
+- name: "CHECK: Compare shared mounts between primary and DR"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'shared_filesystems',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'One or more expected shared mount paths are missing on primary or DR.',
+            'details': {
+              'expected_mounts': hostvars[primary_host].db_validation_data.expected_shared_mounts,
+              'missing_on_primary': missing_on_primary,
+              'missing_on_dr': missing_on_dr,
+              'primary_mount_targets': hostvars[primary_host].db_validation_data.mount_targets,
+              'dr_mount_targets': hostvars[item].db_validation_data.mount_targets
+            }
+          }
+        ]
+      }}
+  vars:
+    expected_mounts: "{{ hostvars[primary_host].db_validation_data.expected_shared_mounts }}"
+    primary_mount_targets: "{{ hostvars[primary_host].db_validation_data.mount_targets }}"
+    dr_mount_targets: "{{ hostvars[item].db_validation_data.mount_targets }}"
+    missing_on_primary: "{{ expected_mounts | difference(primary_mount_targets) }}"
+    missing_on_dr: "{{ expected_mounts | difference(dr_mount_targets) }}"
+  loop: "{{ groups['dr_db'] }}"
+  when:
+    - missing_on_primary | length > 0 or missing_on_dr | length > 0

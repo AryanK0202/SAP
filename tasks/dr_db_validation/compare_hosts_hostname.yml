@@ -1,0 +1,326 @@
+---
+# Validates two related requirements:
+# 1. Every distinct DR host has the expected IP and hostname on the same active
+#    line in the selected reference host's /etc/hosts file.
+# 2. Every customer HANA hostname matches the configured NS2 naming regex.
+
+- name: "FACT: Set /etc/hosts and hostname validation scope"
+  ansible.builtin.set_fact:
+    hosts_file_reference_host: >-
+      {{ etc_hosts_reference_host | default(primary_host) }}
+    dr_hosts_for_hosts_file_validation: >-
+      {{
+        validation_dr_hosts
+        | default(groups.get('dr_db', []) | difference([primary_host]))
+      }}
+    customer_hosts_for_hostname_validation: >-
+      {{ groups.get('hana_db', []) }}
+
+- name: "CHECK: Confirm /etc/hosts data was collected from the reference host"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'etc_hosts_collection',
+            'dr_host': 'N/A',
+            'status': 'FAIL',
+            'message': 'The /etc/hosts file could not be validated because no content was collected.',
+            'details': {
+              'checked_host': hosts_file_reference_host,
+              'expected_source': '/etc/hosts'
+            }
+          }
+        ]
+      }}
+  vars:
+    reference_etc_hosts: >-
+      {{
+        hostvars[hosts_file_reference_host]
+        .get('db_validation_data', {})
+        .get(
+          'etc_hosts',
+          hostvars[hosts_file_reference_host]
+          .get('etc_hosts_check', {})
+          .get('stdout', '')
+        )
+      }}
+  when: reference_etc_hosts | trim | length == 0
+
+- name: "FACT: Parse active /etc/hosts entries from the reference host"
+  ansible.builtin.set_fact:
+    reference_etc_hosts_active_lines: >-
+      {{
+        raw_etc_hosts.splitlines()
+        | map('regex_replace', '#.*$', '')
+        | map('trim')
+        | reject('equalto', '')
+        | list
+      }}
+  vars:
+    raw_etc_hosts: >-
+      {{
+        hostvars[hosts_file_reference_host]
+        .get('db_validation_data', {})
+        .get(
+          'etc_hosts',
+          hostvars[hosts_file_reference_host]
+          .get('etc_hosts_check', {})
+          .get('stdout', '')
+        )
+      }}
+  when: raw_etc_hosts | trim | length > 0
+
+- name: "CHECK: Validate each DR IP and hostname pair in /etc/hosts"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'dr_etc_hosts_mapping',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'The DR /etc/hosts entry is missing or invalid. The expected IP and hostname must be mapped on the same active line.',
+            'details': {
+              'checked_host': hosts_file_reference_host,
+              'expected_ip': expected_dr_ip,
+              'expected_hostname': expected_dr_hostname,
+              'lines_with_expected_ip': lines_with_expected_ip,
+              'lines_with_expected_hostname': lines_with_expected_hostname,
+              'exact_mapping_found': false
+            }
+          }
+        ]
+      }}
+  vars:
+    expected_dr_ip: >-
+      {{
+        hostvars[item].get(
+          'expected_etc_hosts_ip',
+          hostvars[item].get(
+            'ansible_default_ipv4',
+            hostvars[item].get('ansible_facts', {}).get('default_ipv4', {})
+          ).get(
+            'address',
+            hostvars[item].get('ansible_host', item)
+          )
+        )
+        | string
+        | trim
+      }}
+    expected_dr_hostname: >-
+      {{
+        hostvars[item].get(
+          'expected_etc_hosts_hostname',
+          hostvars[item].get(
+            'db_validation_data',
+            {}
+          ).get(
+            'hostname',
+            hostvars[item]
+            .get('hostname_check', {})
+            .get('stdout', hostvars[item].get('ansible_hostname', item))
+          )
+        )
+        | string
+        | trim
+      }}
+    escaped_ip: "{{ expected_dr_ip | regex_escape }}"
+    escaped_hostname: "{{ expected_dr_hostname | regex_escape }}"
+    exact_mapping_regex: >-
+      ^{{ escaped_ip }}\s+(?:\S+\s+)*{{ escaped_hostname }}(?:\s|$)
+    ip_line_regex: >-
+      ^{{ escaped_ip }}(?:\s|$)
+    hostname_token_regex: >-
+      (?:^|\s){{ escaped_hostname }}(?:\s|$)
+    exact_mapping_lines: >-
+      {{
+        reference_etc_hosts_active_lines
+        | default([])
+        | select('match', exact_mapping_regex)
+        | list
+      }}
+    lines_with_expected_ip: >-
+      {{
+        reference_etc_hosts_active_lines
+        | default([])
+        | select('match', ip_line_regex)
+        | list
+      }}
+    lines_with_expected_hostname: >-
+      {{
+        reference_etc_hosts_active_lines
+        | default([])
+        | select('search', hostname_token_regex)
+        | list
+      }}
+  loop: "{{ dr_hosts_for_hosts_file_validation }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - reference_etc_hosts_active_lines is defined
+    - expected_dr_ip | length > 0
+    - expected_dr_hostname | length > 0
+    - exact_mapping_lines | length == 0
+
+- name: "CHECK: Report DR hosts with incomplete expected mapping data"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'dr_etc_hosts_expected_values',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'The expected DR IP or hostname could not be determined for /etc/hosts validation.',
+            'details': {
+              'expected_ip': expected_dr_ip,
+              'expected_hostname': expected_dr_hostname,
+              'configure': [
+                'expected_etc_hosts_ip',
+                'expected_etc_hosts_hostname'
+              ]
+            }
+          }
+        ]
+      }}
+  vars:
+    expected_dr_ip: >-
+      {{
+        hostvars[item].get(
+          'expected_etc_hosts_ip',
+          hostvars[item].get(
+            'ansible_default_ipv4',
+            hostvars[item].get('ansible_facts', {}).get('default_ipv4', {})
+          ).get(
+            'address',
+            hostvars[item].get('ansible_host', '')
+          )
+        )
+        | string
+        | trim
+      }}
+    expected_dr_hostname: >-
+      {{
+        hostvars[item].get(
+          'expected_etc_hosts_hostname',
+          hostvars[item].get(
+            'db_validation_data',
+            {}
+          ).get(
+            'hostname',
+            hostvars[item]
+            .get('hostname_check', {})
+            .get('stdout', hostvars[item].get('ansible_hostname', ''))
+          )
+        )
+        | string
+        | trim
+      }}
+  loop: "{{ dr_hosts_for_hosts_file_validation }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - expected_dr_ip | length == 0 or expected_dr_hostname | length == 0
+
+- name: "CHECK: Require an NS2 hostname regular expression for each customer host"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'ns2_hostname_regex_not_configured',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'NS2 hostname validation could not run because no naming-convention regular expression was configured.',
+            'details': {
+              'host': item,
+              'configure_one_of': [
+                'ns2_hostname_regex',
+                'expected_hostname_regex'
+              ]
+            }
+          }
+        ]
+      }}
+  vars:
+    effective_hostname_regex: >-
+      {{
+        hostvars[item].get(
+          'ns2_hostname_regex',
+          hostvars[item].get(
+            'expected_hostname_regex',
+            ns2_hostname_regex
+            | default(expected_hostname_regex | default(''))
+          )
+        )
+        | string
+        | trim
+      }}
+  loop: "{{ customer_hosts_for_hostname_validation }}"
+  loop_control:
+    label: "{{ item }}"
+  when: effective_hostname_regex | length == 0
+
+- name: "CHECK: Validate customer hostnames against the NS2 naming convention"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'ns2_hostname_naming_convention',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'The customer hostname does not follow the configured NS2 naming convention.',
+            'details': {
+              'host': item,
+              'observed_hostname': customer_hostname,
+              'expected_regex': effective_hostname_regex
+            }
+          }
+        ]
+      }}
+  vars:
+    customer_hostname: >-
+      {{
+        hostvars[item].get(
+          'db_validation_data',
+          {}
+        ).get(
+          'hostname',
+          hostvars[item]
+          .get('hostname_check', {})
+          .get('stdout', hostvars[item].get('ansible_hostname', 'UNKNOWN'))
+        )
+        | string
+        | trim
+      }}
+    effective_hostname_regex: >-
+      {{
+        hostvars[item].get(
+          'ns2_hostname_regex',
+          hostvars[item].get(
+            'expected_hostname_regex',
+            ns2_hostname_regex
+            | default(expected_hostname_regex | default(''))
+          )
+        )
+        | string
+        | trim
+      }}
+  loop: "{{ customer_hosts_for_hostname_validation }}"
+  loop_control:
+    label: "{{ item }}"
+  when:
+    - effective_hostname_regex | length > 0
+    - customer_hostname == 'UNKNOWN' or (customer_hostname | regex_search(effective_hostname_regex)) is none

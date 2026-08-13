@@ -1,0 +1,32 @@
+---
+- name: "CHECK: Get user IDs"
+  ansible.builtin.shell: |
+    set -o pipefail
+    for user in {{ validation_users | join(' ') }}; do
+      if getent passwd "$user" >/dev/null; then
+        getent passwd "$user" | awk -F: '{print $1 ":" $3}'
+      else
+        echo "$user:MISSING"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: user_id_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: Get group IDs"
+  ansible.builtin.shell: |
+    set -o pipefail
+    for group in {{ validation_groups | join(' ') }}; do
+      if getent group "$group" >/dev/null; then
+        getent group "$group" | awk -F: '{print $1 ":" $3}'
+      else
+        echo "$group:MISSING"
+      fi
+    done
+  args:
+    executable: /bin/bash
+  register: group_id_check
+  changed_when: false
+  failed_when: false

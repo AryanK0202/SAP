@@ -423,13 +423,17 @@
       "id": "dr_version_match",
       "category": "Build Validation",
       "group": "Replication",
-      "contributor": "Sophia",
-      "task": "Compare primary and DR HANA versions",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Verify each DR HANA DB version is the same level or higher than the primary.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "hana",
+      "task_file": "tasks/dr_db_validation/compare_hana.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_hana_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "hsr_status_studio",
@@ -447,73 +451,96 @@
       "id": "sld_registration",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Validate HANA SLD registration for HSR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Fail when HANA SLD registration is required but confirmation was not provided for a DR host.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "sld",
+      "task_file": "tasks/dr_db_validation/compare_sld.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "plugins_match",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare HANA plug-ins between primary and DR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Compare HANA plug-in inventories between primary and DR and report missing or extra plug-ins.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "hana",
+      "task_file": "tasks/dr_db_validation/compare_hana.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_hana_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "shared_filesystems",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare shared filesystems on primary and DR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Compare expected shared mount paths between the primary and each DR database host.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "filesystems",
+      "task_file": "tasks/dr_db_validation/compare_filesystems.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_basic_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "etc_hosts_ns2",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Validate DR hosts and NS2 naming in /etc/hosts",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Validate DR IP/hostname mappings in /etc/hosts and validate customer hostnames against the configured NS2 naming convention.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "etc_hosts",
+      "task_file": "tasks/dr_db_validation/compare_hosts_hostname.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_basic_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "uid_gid_match",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare SAP user/group IDs between primary and DR",
-      "scope": "component",
-      "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "contributor": "Claire",
+      "task": "Compare configured SAP user UIDs and group GIDs between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "operating_system",
+      "ansible_tag": "users",
+      "task_file": "tasks/dr_db_validation/compare_users_groups.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_users_groups.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "crontab_root_jobs",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare root AIDE/ClamAV cron entries",
-      "scope": "component",
-      "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "contributor": "Claire",
+      "task": "Compare configured SAP user UIDs and group GIDs between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "operating_system",
+      "ansible_tag": "users",
+      "task_file": "tasks/dr_db_validation/compare_users_groups.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_users_groups.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "disk_striping_match",
@@ -1158,7 +1185,148 @@
     "ansible_tag": "network",
     "task_file": "tasks/availability/collect_availability.yml",
     "implementation_status": "runs_today"
-  }
+  },
+  {
+      "id": "dr_ansible_connectivity",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Verify Ansible can log in to each database VM used by the primary/DR validation.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "basic",
+      "task_file": "tasks/dr_db_validation/collect_basic_info.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_diagnostic_agent_parity",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate Diagnostic Agent parity between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "monitoring",
+      "ansible_tag": "diagnostic_agent",
+      "task_file": "tasks/dr_db_validation/compare_diagnostic.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_diagnostic_agent.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_clamsap_installed",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate ClamSAP is installed or detected on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_clamav_daemon_state",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate the ClamAV daemon is installed, enabled, and running on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_watchman_installed",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate Watchman is installed or detected on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_comparison_initialization",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Initialize primary/DR comparison state, identify the primary and distinct DR hosts, and determine collection-only mode.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "always",
+      "task_file": "tasks/dr_db_validation/init_comparison.yml",
+      "implementation_status": "future"
+    },
+    {
+      "id": "dr_normalize_collected_data",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Normalize collected host, filesystem, user/group, cron, Diagnostic Agent, HANA, SLD, and package data for comparison.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "always",
+      "task_file": "tasks/dr_db_validation/normalize_collected_data.yml",
+      "implementation_status": "future"
+    },
+    {
+      "id": "dr_generate_report",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Generate the primary/DR database validation report.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "report",
+      "task_file": "tasks/dr_db_validation/generate_report.yml",
+      "implementation_status": "future"
+    },
+    {
+      "id": "dr_package_remediation",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Optionally install ClamSAP and Watchman packages when package remediation is enabled.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "remediation",
+      "task_file": "tasks/dr_db_validation/remediate_packages.yml",
+      "implementation_status": "future",
+      "notes": "Tasks execute only when enable_package_remediation is true."
+    },
+    {
+      "id": "dr_compare_cron_diagnostic_legacy",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Legacy combined cron and Diagnostic Agent comparison task file.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": null,
+      "task_file": "tasks/dr_db_validation/compare_cron_diagnostic.yml",
+      "implementation_status": "future",
+      "notes": "The main playbook uses compare_cron.yml and compare_diagnostic.yml separately."
+    }
   ],
   "profiles": {
     "core-connectivity": {

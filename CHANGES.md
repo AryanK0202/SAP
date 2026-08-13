@@ -30,14 +30,3 @@
   `app_sid`, and the other variables consumed by the existing task code.
 - `run_hana_checks.py` remains as a compatibility entry point and delegates to
   `sap_validate.py`.
-
-## Verification performed
-
-- Confirmed every file under `tasks/` is byte-for-byte identical to the
-  corresponding file in the uploaded archive.
-- Parsed all project YAML and JSON files successfully.
-- Compiled the supplied sandbox CSV data into generated inventory.
-- Ran unit tests for combined-host compatibility, duplicate detection,
-  per-server reporting, and a generated 1,000-server fleet.
-- The execution environment did not contain `ansible-playbook`, so a live
-  Ansible syntax check and remote SAP validation run were not performed here.

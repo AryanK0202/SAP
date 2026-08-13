@@ -1,0 +1,64 @@
+---
+# Legacy combined task file. The main playbook now imports compare_cron.yml and
+# compare_diagnostic.yml separately so each check can be tagged and demoed on its own.
+
+- name: "CHECK: Validate root crontab contains required patterns"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'root_crontab',
+            'dr_host': item.0,
+            'status': 'FAIL',
+            'message': 'Required root crontab pattern is missing.',
+            'details': {
+              'host': item.0,
+              'missing_pattern': item.1
+            }
+          }
+        ]
+      }}
+  vars:
+    cron_patterns_safe: "{{ hostvars[primary_host].db_validation_data.cron_patterns | default(['aide', 'clamav', 'freshclam']) }}"
+    host_crontab: "{{ hostvars[item.0].db_validation_data.root_crontab | default('') | lower }}"
+    cron_pattern: "{{ item.1 | lower }}"
+  loop: "{{ groups['hana_db'] | default([]) | product(cron_patterns_safe) | list }}"
+  when:
+    - hostvars[item.0].db_validation_data.root_crontab is defined
+    - cron_patterns_safe | length > 0
+    - cron_pattern | length > 0
+    - cron_pattern not in host_crontab
+  tags: [cron, compare]
+
+- name: "CHECK: Diagnostic Agent parity"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'diagnostic_agent_parity',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'Primary has Diagnostic Agent installed, but DR does not.',
+            'details': {
+              'primary_diagnostic_agent': primary_daa_status,
+              'dr_diagnostic_agent': dr_daa_status
+            }
+          }
+        ]
+      }}
+  vars:
+    primary_daa_status: "{{ hostvars[primary_host].db_validation_data.diagnostic_agent | default('unknown') }}"
+    dr_daa_status: "{{ hostvars[item].db_validation_data.diagnostic_agent | default('unknown') }}"
+  loop: "{{ groups['dr_db'] | default([]) }}"
+  when:
+    - hostvars[primary_host].db_validation_data.diagnostic_agent is defined
+    - hostvars[item].db_validation_data.diagnostic_agent is defined
+    - primary_daa_status == 'installed'
+    - dr_daa_status != 'installed'
+  tags: [diagnostic_agent, compare]

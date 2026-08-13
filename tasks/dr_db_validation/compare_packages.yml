@@ -1,0 +1,118 @@
+---
+- name: "CHECK: ClamSAP is installed"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'clamsap_installed',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'ClamSAP is not installed or not detected.',
+            'details': {
+              'host': item,
+              'package_status':
+                hostvars[item].db_validation_data.clamsap_package_status
+                | default('UNKNOWN'),
+              'runtime_status':
+                hostvars[item].db_validation_data.clamsap_runtime_status
+                | default('')
+            }
+          }
+        ]
+      }}
+  loop: "{{ groups.get('hana_db', []) }}"
+  when:
+    - hostvars[item].db_validation_data is defined
+    - hostvars[item].db_validation_data.clamsap_package_status is defined
+    - >
+      'MISSING' in
+      (
+        hostvars[item].db_validation_data.clamsap_package_status
+        | default('MISSING')
+      )
+
+- name: "CHECK: Watchman is installed"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'watchman_installed',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'Watchman is not installed or not detected.',
+            'details': {
+              'host': item,
+              'package_status':
+                hostvars[item].db_validation_data.watchman_package_status
+                | default('UNKNOWN'),
+              'runtime_status':
+                hostvars[item].db_validation_data.watchman_runtime_status
+                | default('')
+            }
+          }
+        ]
+      }}
+  loop: "{{ groups.get('hana_db', []) }}"
+  when:
+    - hostvars[item].db_validation_data is defined
+    - hostvars[item].db_validation_data.watchman_package_status is defined
+    - >
+      'MISSING' in
+      (
+        hostvars[item].db_validation_data.watchman_package_status
+        | default('MISSING')
+      )
+
+- name: "CHECK: ClamAV daemon is installed, enabled, and running"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'clamav_daemon_state',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'ClamAV daemon is not fully installed, enabled, and running.',
+            'details': {
+              'host': item,
+              'installed_packages':
+                hostvars[item].db_validation_data.clamav_installed_packages
+                | default([]),
+              'detected_services':
+                hostvars[item].db_validation_data.clamav_detected_services
+                | default([]),
+              'service_results':
+                hostvars[item].db_validation_data.clamav_service_results
+                | default([]),
+              'package_installed':
+                hostvars[item].db_validation_data.clamav_installed
+                | default(false),
+              'service_found':
+                hostvars[item].db_validation_data.clamav_service_found
+                | default(false),
+              'service_enabled':
+                hostvars[item].db_validation_data.clamav_service_enabled
+                | default(false),
+              'service_running':
+                hostvars[item].db_validation_data.clamav_service_running
+                | default(false)
+            }
+          }
+        ]
+      }}
+  loop: "{{ groups.get('hana_db', []) }}"
+  when:
+    - hostvars[item].db_validation_data is defined
+    - hostvars[item].db_validation_data.clamav_validation_passed is defined
+    - not (
+        hostvars[item].db_validation_data.clamav_validation_passed
+        | bool
+      )

@@ -1,0 +1,62 @@
+---
+- name: "CHECK: Compare HANA DB versions between primary and DR"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'hana_db_version_consistency',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'DR HANA DB version must be the same level or higher than the primary.',
+            'details': {
+              'primary_version_number': primary_hana_version_number,
+              'dr_version_number': dr_hana_version_number,
+              'primary_raw_version': primary_hana_version_raw,
+              'dr_raw_version': dr_hana_version_raw
+            }
+          }
+        ]
+      }}
+  vars:
+    primary_hana_version_number: "{{ hostvars[primary_host].db_validation_data.hana_db_version_number | default('') }}"
+    dr_hana_version_number: "{{ hostvars[item].db_validation_data.hana_db_version_number | default('') }}"
+    primary_hana_version_raw: "{{ hostvars[primary_host].db_validation_data.hana_db_version | default('') }}"
+    dr_hana_version_raw: "{{ hostvars[item].db_validation_data.hana_db_version | default('') }}"
+  loop: "{{ groups['dr_db'] | default([]) }}"
+  when: >
+    (primary_hana_version_number | trim | length == 0)
+    or
+    (dr_hana_version_number | trim | length == 0)
+    or
+    (dr_hana_version_number is version(primary_hana_version_number, '<'))
+
+- name: "CHECK: Compare HANA plug-ins between primary and DR"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'hana_plugin_consistency',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'DR HANA plug-in inventory does not match the primary.',
+            'details': {
+              'missing_on_dr': missing_plugins_on_dr,
+              'extra_on_dr': extra_plugins_on_dr
+            }
+          }
+        ]
+      }}
+  vars:
+    primary_plugins: "{{ hostvars[primary_host].db_validation_data.hana_plugin_inventory | default([]) }}"
+    dr_plugins: "{{ hostvars[item].db_validation_data.hana_plugin_inventory | default([]) }}"
+    missing_plugins_on_dr: "{{ primary_plugins | difference(dr_plugins) }}"
+    extra_plugins_on_dr: "{{ dr_plugins | difference(primary_plugins) }}"
+  loop: "{{ groups['dr_db'] | default([]) }}"
+  when:
+    - missing_plugins_on_dr | length > 0 or extra_plugins_on_dr | length > 0

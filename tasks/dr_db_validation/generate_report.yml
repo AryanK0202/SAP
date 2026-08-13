@@ -1,0 +1,349 @@
+---
+- name: "LOCAL: Generate primary/DR validation report"
+  ansible.builtin.copy:
+    dest: "{{ report_path }}"
+    mode: "0644"
+    content: |
+      {% set findings = primary_dr_findings | default([], true) %}
+      {% set compare_selected = validation_compare_selected | default(false, true) | bool %}
+      {% set compare_requested = validation_compare_requested | default(compare_selected, true) | bool %}
+      {% set collection_only_reason = validation_collection_only_reason | default('Comparison was not performed.', true) | trim %}
+      {% set primary_host_safe = primary_host | default('', true) %}
+      {% set comparable_dr_hosts = validation_dr_hosts | default([], true) %}
+      {% set dr_hosts = comparable_dr_hosts %}
+      {% set hana_hosts = groups.get('hana_db', []) %}
+      {% set run_mode = 'COLLECTION + COMPARISON' if compare_selected else 'COLLECTION ONLY' %}
+      {% set comparison_status = 'NOT RUN' if not compare_selected else ('PASS' if findings | length == 0 else 'FAIL') %}
+
+      <a id="report-top"></a>
+      # Primary / DR Database Validation Report
+
+      ## Run Summary
+
+      | Item | Result |
+      |---|---|
+      | Run Mode | **{{ run_mode }}** |
+      | Collection Status | **COMPLETED** |
+      | Comparison Status | **{{ comparison_status }}** |
+      | Primary Database Host | {% if primary_host_safe %}[`{{ primary_host_safe }}`](#host-{{ primary_host_safe | lower | regex_replace('[^a-z0-9-]', '-') }}){% else %}Not configured{% endif %} |
+      | DR Database Hosts | {% if comparable_dr_hosts | length > 0 %}{% for dr_host in comparable_dr_hosts %}[`{{ dr_host }}`](#host-{{ dr_host | lower | regex_replace('[^a-z0-9-]', '-') }}){% if not loop.last %}, {% endif %}{% endfor %}{% else %}None available{% endif %} |
+      | Hosts Evaluated | {{ hana_hosts | length }} |
+      | Requested Tags | `{{ ansible_run_tags | default(['all'], true) | join(', ') }}` |
+      | Comparison Requested | {{ 'Yes' if compare_requested else 'No' }} |
+      | Comparison Findings | {{ findings | length if compare_selected else 'Not run' }} |
+      | Generated | `{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S UTC') }}` |
+
+      {% if not compare_selected %}
+      > **Collection-only mode:** {{ collection_only_reason }}
+      {% elif findings | length == 0 %}
+      > Validation completed successfully. No discrepancies were detected between the primary and DR database hosts.
+      {% else %}
+      > Validation completed with discrepancies. Review the findings below and remediate the affected DR hosts.
+      {% endif %}
+
+      ## Findings
+
+      {% if not compare_selected %}
+      No comparison findings were generated because this was a collection-only run.
+
+      {% elif findings | length == 0 %}
+      No findings were reported.
+
+      {% else %}
+      | Check | DR Host | Status | Message | Details |
+      |---|---|---|---|---|
+      {% for finding in findings -%}
+      | {{ finding.check | default('Unknown') | string | replace('|', '\|') }} | `{{ finding.dr_host | default('N/A') }}` | **{{ finding.status | default('FAIL') }}** | {{ finding.message | default('No message provided') | string | replace('|', '\|') | replace('\n', '<br>') }} | {{ finding.details | default('No additional details') | string | replace('|', '\|') | replace('\n', '<br>') }} |
+      {% endfor %}
+      {% endif %}
+
+      <a id="host-overview"></a>
+      ## Host Overview
+
+      ### Host Identity
+
+      | Host | Role | Address | Hostname | OS | HANA Version |
+      |---|---|---|---|---|---|
+      {% for host in hana_hosts -%}
+      {% set data = hostvars[host].db_validation_data | default({}) -%}
+      {% set role = 'Primary' if host == primary_host_safe else ('DR' if host in comparable_dr_hosts else 'HANA DB') -%}
+      | [`{{ host }}`](#host-{{ host | lower | regex_replace('[^a-z0-9-]', '-') }}) | {{ role }} | `{{ data.ansible_host | default(hostvars[host].ansible_host | default(host), true) }}{% if hostvars[host].ansible_port is defined %}:{{ hostvars[host].ansible_port }}{% endif %}` | `{{ data.hostname | default('NOT COLLECTED', true) }}` | {{ data.os | default('NOT COLLECTED', true) | string | replace('|', '\|') }} | `{{ data.hana_db_version_number | default('NOT COLLECTED', true) }}` |
+      {% endfor %}
+
+      ### Component Status
+
+      | Host | Diagnostic Agent | ClamSAP | ClamAV | Watchman |
+      |---|---|---|---|---|
+      {% for host in hana_hosts -%}
+      {% set data = hostvars[host].db_validation_data | default({}) -%}
+
+      {% set diagnostic_status = 'NOT COLLECTED' -%}
+      {% if data.diagnostic_agent is defined -%}
+      {% set diagnostic_status = 'INSTALLED' if (data.diagnostic_agent | string | lower) == 'installed' else 'NOT INSTALLED' -%}
+      {% endif -%}
+
+      {% set clamsap_status = 'NOT COLLECTED' -%}
+      {% if data.clamsap_package_status is defined -%}
+      {% set clamsap_status = 'NOT INSTALLED' if 'MISSING' in (data.clamsap_package_status | string | upper) else 'INSTALLED' -%}
+      {% endif -%}
+
+      {% set clamav_status = 'NOT COLLECTED' -%}
+      {% if data.clamav_validation_passed is defined -%}
+      {% if not (data.clamav_installed | default(false) | bool) -%}
+      {% set clamav_status = 'NOT INSTALLED' -%}
+      {% elif not (data.clamav_service_found | default(false) | bool) -%}
+      {% set clamav_status = 'SERVICE NOT FOUND' -%}
+      {% elif not (data.clamav_service_enabled | default(false) | bool) -%}
+      {% set clamav_status = 'DISABLED' -%}
+      {% elif not (data.clamav_service_running | default(false) | bool) -%}
+      {% set clamav_status = 'NOT RUNNING' -%}
+      {% else -%}
+      {% set clamav_status = 'RUNNING' -%}
+      {% endif -%}
+      {% endif -%}
+
+      {% set watchman_status = 'NOT COLLECTED' -%}
+      {% if data.watchman_package_status is defined -%}
+      {% set watchman_status = 'NOT INSTALLED' if 'MISSING' in (data.watchman_package_status | string | upper) else 'INSTALLED' -%}
+      {% endif -%}
+
+      | [`{{ host }}`](#host-{{ host | lower | regex_replace('[^a-z0-9-]', '-') }}) | {{ diagnostic_status }} | {{ clamsap_status }} | {{ clamav_status }} | {{ watchman_status }} |
+      {% endfor %}
+
+      ## Detailed Host Data
+
+      {% for host in hana_hosts %}
+      {% set host_anchor = 'host-' ~ (host | lower | regex_replace('[^a-z0-9-]', '-')) %}
+      {% set data = hostvars[host].db_validation_data | default({}) %}
+      {% set role = 'Primary' if host == primary_host_safe else ('DR' if host in dr_hosts else 'HANA DB') %}
+
+      <a id="{{ host_anchor }}"></a>
+
+      ### {{ host }}
+
+      #### System Information
+
+      | Field | Value |
+      |---|---|
+      | Role | {{ role }} |
+      | Inventory Host | `{{ data.inventory_hostname | default(host) }}` |
+      | Ansible Host | `{{ data.ansible_host | default(hostvars[host].ansible_host | default(host), true) }}{% if hostvars[host].ansible_port is defined %}:{{ hostvars[host].ansible_port }}{% endif %}` |
+      | Hostname | `{{ data.hostname | default('not collected') }}` |
+      | Operating System | {{ data.os | default('not collected') }} |
+      | Kernel | `{{ data.kernel | default('not collected') }}` |
+      | Architecture | `{{ data.architecture | default('not collected') }}` |
+      | Diagnostic Agent | {{ data.diagnostic_agent | default('not collected') }} |
+      | HANA Version | `{{ data.hana_db_version_number | default('not collected') }}` |
+
+      {% if data.hana_sld_registration_required is defined
+            or data.hana_sld_registration_confirmed is defined %}
+      #### SLD Registration
+
+      | Setting | Value |
+      |---|---|
+      | Registration Required | {{ data.hana_sld_registration_required | default('not collected') }} |
+      | Registration Confirmed | {{ data.hana_sld_registration_confirmed | default('not collected') }} |
+      {% endif %}
+
+      {% if data.mount_points is defined %}
+      #### Mount Points
+
+      {% if data.mount_points | length > 0 %}
+      {% set sorted_mounts = data.mount_points | unique | sort %}
+
+      | Mount Point |
+      |---|
+      {% for mount_point in sorted_mounts[:5] -%}
+      | `{{ mount_point }}` |
+      {% endfor %}
+
+      {% if sorted_mounts | length > 5 %}
+      <details>
+      <summary>Show {{ sorted_mounts | length - 5 }} more mount points</summary>
+
+      <table>
+      <tbody>
+      {% for mount_point in sorted_mounts[5:] %}
+      <tr>
+      <td><code>{{ mount_point }}</code></td>
+      </tr>
+      {% endfor %}
+      </tbody>
+      </table>
+
+      </details>
+      {% endif %}
+
+      {% else %}
+      No mount points were collected.
+      {% endif %}
+      {% endif %}
+
+      {% if data.users is defined %}
+      #### SAP Users
+
+      {% if data.users | length > 0 %}
+      | User | UID |
+      |---|---:|
+      {% for user, uid in data.users | dictsort -%}
+      | `{{ user }}` | {{ uid }} |
+      {% endfor %}
+      {% else %}
+      No user information was collected.
+      {% endif %}
+      {% endif %}
+
+      {% if data.groups is defined %}
+      #### SAP Groups
+
+      {% if data.groups | length > 0 %}
+      | Group | GID |
+      |---|---:|
+      {% for group, gid in data.groups | dictsort -%}
+      | `{{ group }}` | {{ gid }} |
+      {% endfor %}
+      {% else %}
+      No group information was collected.
+      {% endif %}
+      {% endif %}
+
+      {% if data.root_crontab is defined %}
+      #### Root Crontab
+
+      ```text
+      {{ data.root_crontab | default('No root crontab was captured.', true) }}
+      ```
+      {% endif %}
+
+      {% if data.hana_db_version is defined %}
+      #### HANA Database Version
+
+      Parsed version: `{{ data.hana_db_version_number | default('not parsed') }}`
+
+      ```text
+      {{ data.hana_db_version | default('No HANA version output was captured.', true) }}
+      ```
+      {% endif %}
+
+      {% if data.hana_plugin_inventory is defined %}
+      #### HANA Plug-in Inventory
+
+      {% if data.hana_plugin_inventory | length > 0 %}
+      <details>
+      <summary>Show all {{ data.hana_plugin_inventory | length }} plug-in entries</summary>
+
+      | Plug-in or Component |
+      |---|
+      {% for plugin in data.hana_plugin_inventory | sort -%}
+      | `{{ plugin | replace('|', '\|') }}` |
+      {% endfor %}
+
+      </details>
+      {% else %}
+      No HANA plug-ins were discovered.
+      {% endif %}
+      {% endif %}
+
+      {% if data.clamsap_package_status is defined
+            or data.clamsap_runtime_status is defined %}
+      #### ClamSAP
+
+      {% if data.clamsap_package_status is defined %}
+      **Package status**
+
+      ```text
+      {{ data.clamsap_package_status | default('No package status was captured.', true) }}
+      ```
+      {% endif %}
+
+      {% if data.clamsap_runtime_status is defined %}
+      **Runtime status**
+
+      ```text
+      {{ data.clamsap_runtime_status | default('No runtime status was captured.', true) }}
+      ```
+      {% endif %}
+      {% endif %}
+
+      {% if data.clamav_validation_passed is defined %}
+      #### ClamAV Daemon
+
+      | Check | Result |
+      |---|---|
+      | Package installed | {{ 'PASS' if data.clamav_installed | default(false) | bool else 'FAIL' }} |
+      | Daemon service found | {{ 'PASS' if data.clamav_service_found | default(false) | bool else 'FAIL' }} |
+      | Daemon enabled | {{ 'PASS' if data.clamav_service_enabled | default(false) | bool else 'FAIL' }} |
+      | Daemon running | {{ 'PASS' if data.clamav_service_running | default(false) | bool else 'FAIL' }} |
+      | Overall validation | {{ 'PASS' if data.clamav_validation_passed | default(false) | bool else 'FAIL' }} |
+
+      **Installed packages**
+
+      ```text
+      {{ data.clamav_installed_packages | default([]) | join(', ') | default('None', true) }}
+      ```
+
+      **Detected services**
+
+      {% if data.clamav_service_results | default([]) | length > 0 %}
+      | Service | Enabled State | Runtime State |
+      |---|---|---|
+      {% for service in data.clamav_service_results %}
+      | `{{ service.name }}` | {{ service.enabled }} | {{ service.state }} |
+      {% endfor %}
+      {% else %}
+      No recognized ClamAV daemon service was detected.
+      {% endif %}
+      {% endif %}
+
+      {% if data.watchman_package_status is defined
+            or data.watchman_runtime_status is defined %}
+      #### Watchman
+
+      {% if data.watchman_package_status is defined %}
+      **Package status**
+
+      ```text
+      {{ data.watchman_package_status | default('No package status was captured.', true) }}
+      ```
+      {% endif %}
+
+      {% if data.watchman_runtime_status is defined %}
+      **Runtime status**
+
+      ```text
+      {{ data.watchman_runtime_status | default('No runtime status was captured.', true) }}
+      ```
+      {% endif %}
+      {% endif %}
+
+      ---
+
+      [Back to top of report](#report-top)
+
+      ---
+
+      {% endfor %}
+
+      <a id="report-metadata"></a>
+      ## Report Metadata
+
+      | Item | Value |
+      |---|---|
+      | Playbook | `validate_primary_dr_db.yml` |
+      | Report Path | `{{ report_path }}` |
+      | Requested Tags | `{{ ansible_run_tags | default(['all'], true) | join(', ') }}` |
+      | Primary Host | `{{ primary_host_safe if primary_host_safe else 'Not configured' }}` |
+      | DR Database Hosts | `{{ comparable_dr_hosts | join(', ') if comparable_dr_hosts | length > 0 else 'None available' }}` |
+      | Hosts Evaluated | {{ hana_hosts | length }} |
+
+      ## Report Conclusion
+
+      {% if not compare_selected %}
+      Collection completed successfully without primary/DR comparison. {{ collection_only_reason }}
+
+      {% elif findings | length == 0 %}
+      The primary and DR database hosts passed all selected validation checks.
+
+      {% else %}
+      The validation identified **{{ findings | length }} finding{{ '' if findings | length == 1 else 's' }}**. Review the findings and correct the reported differences before considering the DR environment validated.
+      {% endif %}

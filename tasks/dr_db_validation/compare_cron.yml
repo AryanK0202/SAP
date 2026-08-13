@@ -1,0 +1,31 @@
+---
+- name: "CHECK: Validate root crontab contains required patterns"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'root_crontab',
+            'dr_host': item.0,
+            'status': 'FAIL',
+            'message': 'Required root crontab pattern is missing.',
+            'details': {
+              'host': item.0,
+              'missing_pattern': item.1
+            }
+          }
+        ]
+      }}
+  vars:
+    cron_patterns_safe: "{{ hostvars[primary_host].db_validation_data.cron_patterns | default(['aide', 'clamav', 'freshclam']) }}"
+    host_crontab: "{{ hostvars[item.0].db_validation_data.root_crontab | default('') | lower }}"
+    cron_pattern: "{{ item.1 | lower }}"
+  loop: "{{ groups['hana_db'] | default([]) | product(cron_patterns_safe) | list }}"
+  when:
+    - hostvars[item.0].db_validation_data.root_crontab is defined
+    - cron_patterns_safe | length > 0
+    - cron_pattern | length > 0
+    - cron_pattern not in host_crontab
+

@@ -1,0 +1,79 @@
+---
+- name: "LOCAL: Ensure report directory exists"
+  ansible.builtin.file:
+    path: "{{ report_dir }}"
+    state: directory
+    mode: "0755"
+
+- name: "ASSERT: Exactly one primary DB host exists"
+  ansible.builtin.assert:
+    that:
+      - groups.get('primary_db', []) | length == 1
+    fail_msg: >-
+      Expected exactly one host in [primary_db].
+      Found: {{ groups.get('primary_db', []) }}
+    success_msg: "Primary DB group is valid."
+
+- name: "FACT: Set primary host"
+  ansible.builtin.set_fact:
+    primary_host: "{{ groups.get('primary_db', [])[0] }}"
+
+- name: "FACT: Identify distinct DR hosts"
+  ansible.builtin.set_fact:
+    validation_dr_hosts: >-
+      {{ groups.get('dr_db', []) | difference([primary_host]) }}
+
+- name: "FACT: Initialize validation findings"
+  ansible.builtin.set_fact:
+    primary_dr_findings: []
+
+- name: "FACT: Determine whether comparison checks were requested"
+  ansible.builtin.set_fact:
+    validation_compare_requested: >-
+      {{
+        'all' in validation_requested_tags
+        or 'compare' in validation_requested_tags
+        or (validation_requested_tags | intersect(validation_category_tags) | length > 0)
+      }}
+  vars:
+    validation_requested_tags: "{{ ansible_run_tags | default(['all']) }}"
+    validation_category_tags:
+      - basic
+      - filesystems
+      - hosts
+      - hostname
+      - etc_hosts
+      - ns2_hostname
+      - users
+      - groups
+      - cron
+      - diagnostic_agent
+      - hana
+      - sld
+      - packages
+      - clamsap
+      - clamav
+      - watchman
+
+- name: "FACT: Enable comparison only when a distinct DR host exists"
+  ansible.builtin.set_fact:
+    validation_compare_selected: >-
+      {{
+        (validation_compare_requested | bool)
+        and (validation_dr_hosts | length > 0)
+      }}
+
+- name: "FACT: Set collection-only reason"
+  ansible.builtin.set_fact:
+    validation_collection_only_reason: >-
+      {% if not (validation_compare_requested | bool) %}
+      Comparison tasks were not requested by the selected tags.
+      {% elif validation_dr_hosts | length == 0 %}
+      No distinct DR host is configured. Host data was collected without primary/DR comparison.
+      {% else %}
+      {% endif %}
+
+- name: "INFO: Collection-only mode"
+  ansible.builtin.debug:
+    msg: "Collection-only mode: {{ validation_collection_only_reason | trim }}"
+  when: not (validation_compare_selected | bool)
