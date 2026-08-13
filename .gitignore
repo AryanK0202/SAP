@@ -7,3 +7,7 @@ generated/*
 !generated/.gitkeep
 artifacts/*
 !artifacts/.gitkeep
+PREPATCH_INTEGRATION.md
+/prepatch/*
+!prepatch/.gitkeep
+additional_checks.json

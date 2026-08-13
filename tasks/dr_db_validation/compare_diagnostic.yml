@@ -1,0 +1,29 @@
+---
+- name: "CHECK: Diagnostic Agent parity"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'diagnostic_agent_parity',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'Primary has Diagnostic Agent installed, but DR does not.',
+            'details': {
+              'primary_diagnostic_agent': primary_daa_status,
+              'dr_diagnostic_agent': dr_daa_status
+            }
+          }
+        ]
+      }}
+  vars:
+    primary_daa_status: "{{ hostvars[primary_host].db_validation_data.diagnostic_agent | default('unknown') }}"
+    dr_daa_status: "{{ hostvars[item].db_validation_data.diagnostic_agent | default('unknown') }}"
+  loop: "{{ groups['dr_db'] | default([]) }}"
+  when:
+    - hostvars[primary_host].db_validation_data.diagnostic_agent is defined
+    - hostvars[item].db_validation_data.diagnostic_agent is defined
+    - primary_daa_status == 'installed'
+    - dr_daa_status != 'installed'

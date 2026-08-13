@@ -1,0 +1,26 @@
+---
+- name: "CHECK: Can login to VM"
+  ansible.builtin.ping:
+  register: login_check
+  tags: [prepatch_ansible_connectivity]
+
+- name: "CHECK: Gather mount information"
+  ansible.builtin.command: findmnt -rn -o TARGET,SOURCE,FSTYPE,OPTIONS
+  register: mount_check
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_filesystem_inventory]
+
+- name: "CHECK: Read /etc/hosts"
+  ansible.builtin.command: cat /etc/hosts
+  register: etc_hosts_check
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_etc_hosts]
+
+- name: "CHECK: Get hostname"
+  ansible.builtin.command: hostname
+  register: hostname_check
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_hostname]

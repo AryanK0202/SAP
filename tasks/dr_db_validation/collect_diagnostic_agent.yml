@@ -1,0 +1,11 @@
+---
+- name: "CHECK: Diagnostic Agent indicators"
+  ansible.builtin.shell: |
+    if getent passwd daaadm >/dev/null || test -d /usr/sap/DAA; then
+      echo "installed"
+    else
+      echo "not_installed"
+    fi
+  register: diagnostic_agent_check
+  changed_when: false
+  failed_when: false

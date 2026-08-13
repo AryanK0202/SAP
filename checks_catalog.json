@@ -1,5 +1,5 @@
 {
-  "_comment": "Catalog for bulk SAP validation. scope/component metadata is used for documentation and future routing; existing ansible_tag values and task implementations are unchanged.",
+  "_comment": "Catalog for bulk SAP validation. scope/component metadata is used for documentation and routing. Claire Prepatch checks are integrated under tasks/prepatch and use prepatch_-namespaced Ansible tags.",
   "checks": [
     {
       "id": "login",
@@ -423,13 +423,17 @@
       "id": "dr_version_match",
       "category": "Build Validation",
       "group": "Replication",
-      "contributor": "Sophia",
-      "task": "Compare primary and DR HANA versions",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Verify each DR HANA DB version is the same level or higher than the primary.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "hana",
+      "task_file": "tasks/dr_db_validation/compare_hana.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_hana_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "hsr_status_studio",
@@ -447,73 +451,96 @@
       "id": "sld_registration",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Validate HANA SLD registration for HSR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Fail when HANA SLD registration is required but confirmation was not provided for a DR host.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "sld",
+      "task_file": "tasks/dr_db_validation/compare_sld.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "plugins_match",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare HANA plug-ins between primary and DR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Compare HANA plug-in inventories between primary and DR and report missing or extra plug-ins.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "hana",
+      "task_file": "tasks/dr_db_validation/compare_hana.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_hana_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "shared_filesystems",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare shared filesystems on primary and DR",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Compare expected shared mount paths between the primary and each DR database host.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "filesystems",
+      "task_file": "tasks/dr_db_validation/compare_filesystems.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_basic_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "etc_hosts_ns2",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Validate DR hosts and NS2 naming in /etc/hosts",
-      "scope": "component",
+      "contributor": "Claire",
+      "task": "Validate DR IP/hostname mappings in /etc/hosts and validate customer hostnames against the configured NS2 naming convention.",
+      "scope": "landscape",
       "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "ansible_tag": "etc_hosts",
+      "task_file": "tasks/dr_db_validation/compare_hosts_hostname.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_basic_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "uid_gid_match",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare SAP user/group IDs between primary and DR",
-      "scope": "component",
-      "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "contributor": "Claire",
+      "task": "Compare configured SAP user UIDs and group GIDs between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "operating_system",
+      "ansible_tag": "users",
+      "task_file": "tasks/dr_db_validation/compare_users_groups.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_users_groups.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "crontab_root_jobs",
       "category": "Build Validation",
       "group": "DB DR Validation",
-      "contributor": "Sophia",
-      "task": "Compare root AIDE/ClamAV cron entries",
-      "scope": "component",
-      "component": "hana",
-      "ansible_tag": null,
-      "task_file": "tasks/build_validation/replication_dr.yml (future)",
-      "implementation_status": "future"
+      "contributor": "Claire",
+      "task": "Compare configured SAP user UIDs and group GIDs between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "operating_system",
+      "ansible_tag": "users",
+      "task_file": "tasks/dr_db_validation/compare_users_groups.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_users_groups.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
     },
     {
       "id": "disk_striping_match",
@@ -696,6 +723,30 @@
       "implementation_status": "manual_only"
     },
     {
+      "id": "fs_capacity",
+      "category": "Health",
+      "group": "Filesystem",
+      "contributor": "Aryan",
+      "task": "Check all SAP/HANA filesystem capacity",
+      "scope": "host",
+      "component": "os",
+      "ansible_tag": "filesystem",
+      "task_file": "tasks/health/collect_os_health.yml",
+      "implementation_status": "runs_today"
+    },
+    {
+      "id": "fs_inode_usage",
+      "category": "Health",
+      "group": "Filesystem",
+      "contributor": "Aryan",
+      "task": "Check filesystem inode usage",
+      "scope": "host",
+      "component": "os",
+      "ansible_tag": "inode",
+      "task_file": "tasks/health/collect_os_health.yml",
+      "implementation_status": "runs_today"
+    },
+    {
       "id": "prepatch_clamsap",
       "category": "Prepatch",
       "group": "Package Information",
@@ -703,9 +754,10 @@
       "task": "Validate ClamSAP installation and runtime status.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "clamsap",
+      "ansible_tag": "prepatch_clamsap",
       "task_file": "tasks/prepatch/collect_package_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_clamav",
@@ -715,9 +767,10 @@
       "task": "Validate ClamAV installation, daemon configuration, and runtime health.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "clamav",
+      "ansible_tag": "prepatch_clamav",
       "task_file": "tasks/prepatch/collect_package_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_watchman",
@@ -727,11 +780,11 @@
       "task": "Validate Watchman installation and runtime status.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "watchman",
+      "ansible_tag": "prepatch_watchman",
       "task_file": "tasks/prepatch/collect_package_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_package_manager_activity",
       "category": "Prepatch",
@@ -740,9 +793,10 @@
       "task": "Detect active package-manager processes before patching.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "package_manager_activity",
+      "ansible_tag": "prepatch_package_manager_activity",
       "task_file": "tasks/prepatch/collect_patch_readiness.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_patch_staging_space",
@@ -752,9 +806,10 @@
       "task": "Verify sufficient free space for patch staging.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "patch_staging_space",
+      "ansible_tag": "prepatch_patch_staging_space",
       "task_file": "tasks/prepatch/collect_patch_readiness.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_pending_os_reboot",
@@ -764,9 +819,10 @@
       "task": "Detect whether the operating system requires a reboot.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "pending_os_reboot",
+      "ansible_tag": "prepatch_pending_os_reboot",
       "task_file": "tasks/prepatch/collect_patch_readiness.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hdblcm_tool",
@@ -776,11 +832,11 @@
       "task": "Verify the HANA lifecycle management tool is available.",
       "scope": "host",
       "component": "hana",
-      "ansible_tag": "hdblcm_tool",
+      "ansible_tag": "prepatch_hdblcm_tool",
       "task_file": "tasks/prepatch/collect_patch_readiness.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_hana_system_replication",
       "category": "Prepatch",
@@ -789,11 +845,11 @@
       "task": "Check HANA System Replication role and health.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_system_replication",
+      "ansible_tag": "prepatch_hana_system_replication",
       "task_file": "tasks/prepatch/collect_replication_status.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_sap_host_agent",
       "category": "Prepatch",
@@ -802,11 +858,11 @@
       "task": "Verify the SAP Host Agent process is running.",
       "scope": "host",
       "component": "sap",
-      "ansible_tag": "sap_host_agent",
+      "ansible_tag": "prepatch_sap_host_agent",
       "task_file": "tasks/prepatch/collect_sap_host_agent.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_os_users",
       "category": "Prepatch",
@@ -815,9 +871,10 @@
       "task": "Validate SAP operating-system users and collect their UIDs.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "os_users",
+      "ansible_tag": "prepatch_os_users",
       "task_file": "tasks/prepatch/collect_users_groups.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_os_groups",
@@ -827,11 +884,11 @@
       "task": "Validate SAP operating-system groups and collect their GIDs.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "os_groups",
+      "ansible_tag": "prepatch_os_groups",
       "task_file": "tasks/prepatch/collect_users_groups.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_hana_data_backup",
       "category": "Prepatch",
@@ -840,9 +897,10 @@
       "task": "Check the latest successful complete HANA data backup.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_data_backup",
+      "ansible_tag": "prepatch_hana_data_backup",
       "task_file": "tasks/prepatch/collect_backup_status.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hana_log_backup",
@@ -852,11 +910,11 @@
       "task": "Check the latest successful HANA log backup.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_log_backup",
+      "ansible_tag": "prepatch_hana_log_backup",
       "task_file": "tasks/prepatch/collect_backup_status.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_ansible_connectivity",
       "category": "Prepatch",
@@ -865,9 +923,10 @@
       "task": "Verify Ansible can connect to and execute on the host.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "ansible_connectivity",
+      "ansible_tag": "prepatch_ansible_connectivity",
       "task_file": "tasks/prepatch/collect_basic_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_filesystem_inventory",
@@ -877,9 +936,10 @@
       "task": "Collect mounted filesystem information from the host.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "filesystem_inventory",
+      "ansible_tag": "prepatch_filesystem_inventory",
       "task_file": "tasks/prepatch/collect_basic_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_etc_hosts",
@@ -889,9 +949,10 @@
       "task": "Read /etc/hosts for hostname and address validation.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "etc_hosts",
+      "ansible_tag": "prepatch_etc_hosts",
       "task_file": "tasks/prepatch/collect_basic_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hostname",
@@ -901,11 +962,11 @@
       "task": "Collect the system hostname for identity validation.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "hostname",
+      "ansible_tag": "prepatch_hostname",
       "task_file": "tasks/prepatch/collect_basic_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_root_cron",
       "category": "Prepatch",
@@ -914,11 +975,11 @@
       "task": "Validate required root crontab entries.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "root_cron",
+      "ansible_tag": "prepatch_root_cron",
       "task_file": "tasks/prepatch/collect_cron.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_diagnostic_agent",
       "category": "Prepatch",
@@ -927,11 +988,11 @@
       "task": "Detect SAP Diagnostic Agent installation indicators.",
       "scope": "host",
       "component": "sap",
-      "ansible_tag": "diagnostic_agent",
+      "ansible_tag": "prepatch_diagnostic_agent",
       "task_file": "tasks/prepatch/collect_diagnostic_agent.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_active_hana_alerts",
       "category": "Prepatch",
@@ -940,11 +1001,11 @@
       "task": "Evaluate active HANA alerts for potential issues.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "active_hana_alerts",
+      "ansible_tag": "prepatch_active_hana_alerts",
       "task_file": "tasks/prepatch/collect_hana_alerts.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_hana_version",
       "category": "Prepatch",
@@ -953,9 +1014,10 @@
       "task": "Collect and validate the installed HANA database version.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_version",
+      "ansible_tag": "prepatch_hana_version",
       "task_file": "tasks/prepatch/collect_hana_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hana_plugin_inventory",
@@ -965,11 +1027,11 @@
       "task": "Collect the installed HANA plug-in inventory.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_plugin_inventory",
+      "ansible_tag": "prepatch_hana_plugin_inventory",
       "task_file": "tasks/prepatch/collect_hana_info.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_hana_core_services",
       "category": "Prepatch",
@@ -978,11 +1040,11 @@
       "task": "Check individual HANA service states and runtime health.",
       "scope": "component",
       "component": "hana",
-      "ansible_tag": "hana_core_services",
+      "ansible_tag": "prepatch_hana_core_services",
       "task_file": "tasks/prepatch/collect_hana_services.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
-
     {
       "id": "prepatch_cpu_load",
       "category": "Prepatch",
@@ -991,9 +1053,10 @@
       "task": "Check CPU load against configured thresholds.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "cpu_load",
+      "ansible_tag": "prepatch_cpu_load",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_memory_usage",
@@ -1003,9 +1066,10 @@
       "task": "Check system memory utilization against configured thresholds.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "memory_usage",
+      "ansible_tag": "prepatch_memory_usage",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_swap_usage",
@@ -1015,9 +1079,10 @@
       "task": "Check swap utilization against configured thresholds.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "swap_usage",
+      "ansible_tag": "prepatch_swap_usage",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_root_filesystem",
@@ -1027,9 +1092,10 @@
       "task": "Check root filesystem usage and mount health.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "root_filesystem",
+      "ansible_tag": "prepatch_root_filesystem",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_sap_filesystem",
@@ -1039,9 +1105,10 @@
       "task": "Check SAP filesystem usage and mount health.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "sap_filesystem",
+      "ansible_tag": "prepatch_sap_filesystem",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hana_data_filesystem",
@@ -1051,9 +1118,10 @@
       "task": "Check HANA data filesystem usage and availability.",
       "scope": "host",
       "component": "hana",
-      "ansible_tag": "hana_data_filesystem",
+      "ansible_tag": "prepatch_hana_data_filesystem",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hana_log_filesystem",
@@ -1063,9 +1131,10 @@
       "task": "Check HANA log filesystem usage and availability.",
       "scope": "host",
       "component": "hana",
-      "ansible_tag": "hana_log_filesystem",
+      "ansible_tag": "prepatch_hana_log_filesystem",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_hana_shared_filesystem",
@@ -1075,9 +1144,10 @@
       "task": "Check HANA shared filesystem usage and availability.",
       "scope": "host",
       "component": "hana",
-      "ansible_tag": "hana_shared_filesystem",
+      "ansible_tag": "prepatch_hana_shared_filesystem",
       "task_file": "tasks/prepatch/collect_os_health.yml",
-      "implementation_status": "future"
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
     },
     {
       "id": "prepatch_failed_systemd_units",
@@ -1087,8 +1157,124 @@
       "task": "Detect failed systemd units before patching.",
       "scope": "host",
       "component": "os",
-      "ansible_tag": "failed_systemd_units",
+      "ansible_tag": "prepatch_failed_systemd_units",
       "task_file": "tasks/prepatch/collect_os_health.yml",
+      "implementation_status": "runs_today",
+      "notes": "Integrated through tasks/prepatch/main.yml and site.yml; Claire tags are namespaced with prepatch_ to avoid collisions with Build Validation."
+    },
+    {
+    "id": "scc_daemon_status",
+    "category": "Availability",
+    "group": "SAP Cloud Connector",
+    "contributor": "Aryan",
+    "task": "Check if SAP Cloud Connector daemon is running and enabled",
+    "scope": "component",
+    "component": "cloud_connector",
+    "ansible_tag": "service",
+    "task_file": "tasks/availability/collect_availability.yml",
+    "implementation_status": "runs_today"
+  },
+  {
+    "id": "scc_web_reachability",
+    "category": "Availability",
+    "group": "SAP Cloud Connector",
+    "contributor": "Aryan",
+    "task": "Validate cloud connector login page reachability via local HTTPS",
+    "scope": "component",
+    "component": "cloud_connector",
+    "ansible_tag": "network",
+    "task_file": "tasks/availability/collect_availability.yml",
+    "implementation_status": "runs_today"
+  },
+  {
+      "id": "dr_ansible_connectivity",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Verify Ansible can log in to each database VM used by the primary/DR validation.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "basic",
+      "task_file": "tasks/dr_db_validation/collect_basic_info.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_diagnostic_agent_parity",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate Diagnostic Agent parity between the primary and DR database hosts.",
+      "scope": "landscape",
+      "component": "monitoring",
+      "ansible_tag": "diagnostic_agent",
+      "task_file": "tasks/dr_db_validation/compare_diagnostic.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_diagnostic_agent.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_clamsap_installed",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate ClamSAP is installed or detected on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_clamav_daemon_state",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate the ClamAV daemon is installed, enabled, and running on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_watchman_installed",
+      "category": "Build Validation",
+      "group": "DB DR Validation",
+      "contributor": "Claire",
+      "task": "Validate Watchman is installed or detected on each database host.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "packages",
+      "task_file": "tasks/dr_db_validation/compare_packages.yml",
+      "implementation_status": "future",
+      "supporting_task_files": [
+        "tasks/dr_db_validation/collect_package_info.yml",
+        "tasks/dr_db_validation/normalize_collected_data.yml"
+      ]
+    },
+    {
+      "id": "dr_comparison_initialization",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Initialize primary/DR comparison state, identify the primary and distinct DR hosts, and determine collection-only mode.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "always",
+      "task_file": "tasks/dr_db_validation/init_comparison.yml",
       "implementation_status": "future"
     },
     {
@@ -1138,6 +1324,54 @@
       "ansible_tag": "prepatch_validations",
       "task_file": "tasks/prepatch/patch_readiness.yml",
       "implementation_status": "runs_today"
+      "id": "dr_normalize_collected_data",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Normalize collected host, filesystem, user/group, cron, Diagnostic Agent, HANA, SLD, and package data for comparison.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "always",
+      "task_file": "tasks/dr_db_validation/normalize_collected_data.yml",
+      "implementation_status": "future"
+    },
+    {
+      "id": "dr_generate_report",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Generate the primary/DR database validation report.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": "report",
+      "task_file": "tasks/dr_db_validation/generate_report.yml",
+      "implementation_status": "future"
+    },
+    {
+      "id": "dr_package_remediation",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Optionally install ClamSAP and Watchman packages when package remediation is enabled.",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "remediation",
+      "task_file": "tasks/dr_db_validation/remediate_packages.yml",
+      "implementation_status": "future",
+      "notes": "Tasks execute only when enable_package_remediation is true."
+    },
+    {
+      "id": "dr_compare_cron_diagnostic_legacy",
+      "category": "Build Validation",
+      "group": "DB DR Validation Support",
+      "contributor": "Claire",
+      "task": "Legacy combined cron and Diagnostic Agent comparison task file.",
+      "scope": "landscape",
+      "component": "landscape",
+      "ansible_tag": null,
+      "task_file": "tasks/dr_db_validation/compare_cron_diagnostic.yml",
+      "implementation_status": "future",
+      "notes": "The main playbook uses compare_cron.yml and compare_diagnostic.yml separately."
     }
   ],
   "profiles": {
@@ -1247,6 +1481,36 @@
         "hana_validate_cloud": false
       },
       "notes": "Runs fully tested automated checks only on servers whose generated component groups make them applicable."
+    },
+    "prepatch-quick": {
+      "tags": [
+        "prepatch_ansible_connectivity",
+        "prepatch_cpu_load",
+        "prepatch_memory_usage",
+        "prepatch_swap_usage",
+        "prepatch_root_filesystem",
+        "prepatch_sap_filesystem",
+        "prepatch_hana_data_filesystem",
+        "prepatch_hana_log_filesystem",
+        "prepatch_hana_shared_filesystem",
+        "prepatch_failed_systemd_units",
+        "prepatch_sap_host_agent",
+        "prepatch_hana_core_services",
+        "prepatch_hana_system_replication",
+        "prepatch_package_manager_activity",
+        "prepatch_patch_staging_space",
+        "prepatch_pending_os_reboot",
+        "prepatch_hdblcm_tool"
+      ],
+      "extra_vars": {},
+      "notes": "Runs the fast Claire pre-patch connectivity, OS-health, service, replication, and immediate patch-readiness checks."
+    },
+    "prepatch-full": {
+      "tags": [
+        "prepatch"
+      ],
+      "extra_vars": {},
+      "notes": "Runs every integrated Claire Prepatch check on applicable HANA DB hosts."
     }
   }
 }

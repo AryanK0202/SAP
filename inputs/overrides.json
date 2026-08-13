@@ -12,11 +12,7 @@
         "vhcals4hci": "10.0.22.162",
         "vhcals4hcs": "10.0.22.162",
         "vhcalhdbdb": "10.0.22.162"
-      }
-    }
-  },
-  "landscapes": {
-    "s4h-sandbox": {
+      },
       "sap_landscape": {
         "application_sid": "S4H",
         "database_sid": "HDB",

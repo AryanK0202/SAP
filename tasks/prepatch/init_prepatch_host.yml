@@ -1,0 +1,16 @@
+---
+- name: "FACT: Validate requested pre-patch mode"
+  ansible.builtin.assert:
+    that:
+      - prepatch_run_mode in ['full', 'quick']
+    fail_msg: >-
+      prepatch_mode must be either 'full' or 'quick'.
+      Received: {{ prepatch_run_mode }}
+  tags: [always]
+
+- name: "FACT: Initialize host service results"
+  ansible.builtin.set_fact:
+    prepatch_services: []
+    prepatch_host_status: RED
+    prepatch_collection_started_at: "{{ now(utc=true, fmt='%Y-%m-%d %H:%M:%S UTC') }}"
+  tags: [always]

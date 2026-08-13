@@ -44,8 +44,8 @@ class InventoryCompilerTests(unittest.TestCase):
 
     def test_combined_server_generates_compatibility_groups_and_vars(self):
         (self.root / "servers.csv").write_text(
-            "server_id,address,environment,landscape,enabled\n"
-            "sap-01,10.0.0.1,sandbox,s4h,true\n"
+            "server_id,address,environment,customer,enabled\n"
+            "sap-01,10.0.0.1,sandbox,RTS,true\n"
         )
         (self.root / "instances.csv").write_text(
             "server_id,component,sid,instance_number,userstore_key\n"
@@ -62,13 +62,15 @@ class InventoryCompilerTests(unittest.TestCase):
         self.assertIn("sap-01", normalized["groups"]["nw_app"])
         self.assertIn("sap-01", normalized["groups"]["component_hana"])
         self.assertIn("sap-01", normalized["groups"]["component_abap"])
+        self.assertIn("sap-01", normalized["groups"]["customer_rts"])
+        self.assertEqual(normalized["servers"]["sap-01"]["customer"], "RTS")
 
     def test_compiles_one_thousand_servers(self):
         with (self.root / "servers.csv").open("w", newline="") as handle:
             writer = csv.writer(handle)
-            writer.writerow(["server_id", "address", "environment", "landscape", "enabled"])
+            writer.writerow(["server_id", "address", "environment", "customer", "enabled"])
             for index in range(1000):
-                writer.writerow([f"hana-{index:04d}", f"10.0.{index // 250}.{index % 250 + 1}", "production", "fleet", "true"])
+                writer.writerow([f"hana-{index:04d}", f"10.0.{index // 250}.{index % 250 + 1}", "production", "RTS", "true"])
         with (self.root / "instances.csv").open("w", newline="") as handle:
             writer = csv.writer(handle)
             writer.writerow(["server_id", "component", "sid", "instance_number"])

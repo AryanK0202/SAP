@@ -1,0 +1,62 @@
+---
+- name: "CHECK: HANA DB version"
+  ansible.builtin.shell: |
+    set -o pipefail
+    if [ -x "{{ hana_hdb_home }}/HDB" ]; then
+      "{{ hana_hdb_home }}/HDB" version
+    else
+      echo "HDB version command not found or not executable: {{ hana_hdb_home }}/HDB"
+      exit 1
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ sid_adm_user }}"
+  register: hana_db_version_check
+  changed_when: false
+  failed_when: false
+
+- name: "FACT: Parse HANA DB version number"
+  vars:
+    hana_version_line: >-
+      {{
+        hana_db_version_check.stdout_lines
+        | default([])
+        | select('search', 'version:')
+        | list
+        | first
+        | default('')
+      }}
+  ansible.builtin.set_fact:
+    hana_db_version_number: >-
+      {{
+        hana_version_line.split(':', 1)[1] | trim
+        if ':' in hana_version_line
+        else 'UNKNOWN'
+      }}
+
+- name: "CHECK: HANA plug-in inventory"
+  ansible.builtin.shell: |
+    set -o pipefail
+    found=0
+    for dir in \
+      "/hana/shared/{{ hana_sid }}/exe/linuxx86_64/plugins" \
+      "{{ hana_hdb_home }}/exe/plugins" \
+      "/usr/sap/{{ hana_sid }}/SYS/global/hdb/plugins"; do
+      if [ -d "$dir" ]; then
+        found=1
+        find "$dir" \( -type f -o -type d \) -mindepth 1 -maxdepth 2 2>/dev/null \
+          | sed "s#^$dir/##" \
+          | sort -u
+      fi
+    done
+    if [ "$found" -eq 0 ]; then
+      echo "NO_PLUGIN_DIRECTORY_FOUND"
+    fi
+  args:
+    executable: /bin/bash
+  become: true
+  become_user: "{{ sid_adm_user }}"
+  register: hana_plugin_inventory_check
+  changed_when: false
+  failed_when: false

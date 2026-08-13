@@ -1,2 +1,12 @@
-server_id,address,physical_ip,physical_hostname,environment,landscape,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
-sap-sandbox-01,54.84.120.187,10.0.22.162,sid-hdb-s4h.dummy.nodomain,sandbox,s4h-sandbox,sap-lab,,,,,true,true
+server_id,address,physical_ip,physical_hostname,environment,customer,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
+sap-sandbox-01,54.84.120.187,10.0.22.162,sid-hdb-s4h.dummy.nodomain,sandbox,RTS,sap-lab,,,,,true,true
+demo-acme-prod-01,192.0.2.11,10.250.0.11,acme-prod-01.demo.local,production,ACME,sap-lab,,,,,true,false
+demo-acme-dev-01,192.0.2.12,10.250.0.12,acme-dev-01.demo.local,development,ACME,sap-lab,,,,,true,false
+demo-globex-prod-01,192.0.2.21,10.250.0.21,globex-prod-01.demo.local,production,GLOBEX,sap-lab,,,,,true,false
+demo-globex-qa-01,192.0.2.22,10.250.0.22,globex-qa-01.demo.local,qa,GLOBEX,sap-lab,,,,,true,false
+demo-initech-prod-01,192.0.2.31,10.250.0.31,initech-prod-01.demo.local,production,INITECH,sap-lab,,,,,true,false
+demo-initech-dev-01,192.0.2.32,10.250.0.32,initech-dev-01.demo.local,development,INITECH,sap-lab,,,,,true,false
+demo-rts-prod-01,192.0.2.41,10.250.0.41,rts-prod-01.demo.local,production,RTS,sap-lab,,,,,true,false
+demo-rts-qa-01,192.0.2.42,10.250.0.42,rts-qa-01.demo.local,qa,RTS,sap-lab,,,,,true,false
+demo-rts-dev-01,192.0.2.43,10.250.0.43,rts-dev-01.demo.local,development,RTS,sap-lab,,,,,true,false
+demo-umbrella-prod-01,192.0.2.51,10.250.0.51,umbrella-prod-01.demo.local,production,UMBRELLA,sap-lab,,,,,true,false

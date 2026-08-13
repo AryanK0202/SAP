@@ -1,0 +1,56 @@
+---
+- name: "CHECK: Compare UID values"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'uid_consistency',
+            'dr_host': item.0,
+            'status': 'FAIL',
+            'message': 'User UID does not match between primary and DR.',
+            'details': {
+              'user': item.1,
+              'primary_uid': primary_uid,
+              'dr_uid': dr_uid
+            }
+          }
+        ]
+      }}
+  vars:
+    validation_users_safe: "{{ hostvars[primary_host].db_validation_data.validation_users | default(['hxeadm', 'sapadm', 'daaadm']) }}"
+    primary_uid: "{{ hostvars[primary_host].db_validation_data.users[item.1] | default('MISSING') }}"
+    dr_uid: "{{ hostvars[item.0].db_validation_data.users[item.1] | default('MISSING') }}"
+  loop: "{{ groups['dr_db'] | default([]) | product(validation_users_safe) | list }}"
+  when:
+    - primary_uid != dr_uid
+
+- name: "CHECK: Compare GID values"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'gid_consistency',
+            'dr_host': item.0,
+            'status': 'FAIL',
+            'message': 'Group GID does not match between primary and DR.',
+            'details': {
+              'group': item.1,
+              'primary_gid': primary_gid,
+              'dr_gid': dr_gid
+            }
+          }
+        ]
+      }}
+  vars:
+    validation_groups_safe: "{{ hostvars[primary_host].db_validation_data.validation_groups | default(['sapsys', 'sapinst']) }}"
+    primary_gid: "{{ hostvars[primary_host].db_validation_data.groups[item.1] | default('MISSING') }}"
+    dr_gid: "{{ hostvars[item.0].db_validation_data.groups[item.1] | default('MISSING') }}"
+  loop: "{{ groups['dr_db'] | default([]) | product(validation_groups_safe) | list }}"
+  when:
+    - primary_gid != dr_gid

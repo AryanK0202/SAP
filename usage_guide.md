@@ -53,7 +53,7 @@ also creates modern groups such as `component_hana` and `component_abap`.
 ├── inputs/
 │   ├── servers.csv                  # one row per physical/virtual server
 │   ├── instances.csv                # zero or more SAP components per server
-│   └── overrides.json               # host/landscape exceptions
+│   └── overrides.json               # host/customer exceptions
 ├── inventory_compiler/              # CSV normalization and inventory generation
 ├── runner/                          # catalog and result aggregation helpers
 ├── generated/                       # generated inventory and normalized model
@@ -124,10 +124,10 @@ Global defaults are in `config/defaults.json`:
 `inputs/servers.csv` contains one row per Ansible connection target.
 
 ```csv
-server_id,address,physical_ip,physical_hostname,environment,landscape,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
-sap-sandbox-01,54.84.120.187,10.0.22.162,sid-hdb-s4h.dummy.nodomain,sandbox,s4h-sandbox,sap-lab,,,,,true,true
-hdb-prod-001,10.20.10.11,10.20.10.11,hdb-prod-001.example.com,production,s4p,sap-production,,,,,true,true
-app-prod-001,10.20.20.11,10.20.20.11,app-prod-001.example.com,production,s4p,sap-production,,,,,true,true
+server_id,address,physical_ip,physical_hostname,environment,customer,credential_profile,ssh_user,ssh_port,private_key_file,python_interpreter,host_agent_expected,enabled
+sap-sandbox-01,54.84.120.187,10.0.22.162,sid-hdb-s4h.dummy.nodomain,sandbox,RTS,sap-lab,,,,,true,true
+hdb-prod-001,10.20.10.11,10.20.10.11,hdb-prod-001.example.com,production,RTS,sap-production,,,,,true,true
+app-prod-001,10.20.20.11,10.20.20.11,app-prod-001.example.com,production,RTS,sap-production,,,,,true,true
 ```
 
 Required fields:
@@ -138,7 +138,7 @@ Required fields:
 Recommended fields:
 
 - `environment`
-- `landscape`
+- `customer`
 - `credential_profile`
 - `physical_hostname`
 
@@ -178,7 +178,7 @@ multi-instance role loops.
 Paths and administrator names are derived when omitted. Use the optional path
 columns or `inputs/overrides.json` for exceptions.
 
-## Configure host and landscape exceptions
+## Configure host and customer exceptions
 
 Use `inputs/overrides.json` instead of adding many one-off columns:
 
@@ -189,11 +189,7 @@ Use `inputs/overrides.json` instead of adding many one-off columns:
       "tls_cert_paths": [
         "/usr/sap/S4H/D00/sec/SAPSSLS.pse"
       ],
-      "tls_cert_become_user": "s4hadm"
-    }
-  },
-  "landscapes": {
-    "s4h-sandbox": {
+      "tls_cert_become_user": "s4hadm",
       "sap_landscape": {
         "application_sid": "S4H",
         "database_sid": "HDB",
@@ -242,7 +238,7 @@ component_ascs
 component_webdispatcher
 component_host_agent
 environment_<name>
-landscape_<name>
+customer_<name>
 hana_db                 # compatibility alias
 nw_app                  # compatibility alias
 ```
@@ -299,10 +295,10 @@ By environment:
 ./sap_validate.py --environment production --profile production-readiness
 ```
 
-By landscape:
+By customer:
 
 ```bash
-./sap_validate.py --landscape s4p --profile production-readiness
+./sap_validate.py --customer RTS --profile production-readiness
 ```
 
 By component:
@@ -327,12 +323,12 @@ By specific server IDs:
 ```
 
 Filters are intersected. For example, this selects production servers in the
-`s4p` landscape that contain HANA:
+customer `RTS` that contain HANA:
 
 ```bash
 ./sap_validate.py \
   --environment production \
-  --landscape s4p \
+  --customer RTS \
   --component hana \
   --profile production-readiness
 ```

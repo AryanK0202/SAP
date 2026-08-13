@@ -132,6 +132,11 @@
     - name: "LOAD: prepatch readiness checks"
       ansible.builtin.import_tasks: tasks/prepatch/patch_readiness.yml
 
+    - name: "LOAD: Claire pre-patch readiness checks"
+      ansible.builtin.import_tasks: tasks/prepatch/main.yml
+      when: inventory_hostname in (groups.get('hana_db', []))
+      tags: [prepatch]
+
     # tasks/cloud.yml is intentionally not imported until an AWS DLM policy
     # ID and controller credentials are confirmed.
 
@@ -245,7 +250,7 @@
               'physical_hostname': (physical_hostname | default('')),
               'physical_ip': (physical_ip | default('')),
               'environment': (sap_environment | default('')),
-              'landscape': (sap_landscape_id | default('')),
+              'customer': (sap_customer | default('')),
               'groups': group_names,
               'sap_instances': (sap_instances | default([]))
             } | to_nice_json
@@ -346,6 +351,10 @@
           - **Raw outputs:**
             {{ ('`' ~ e.raw_output_dir ~ '/`') if e.raw_output_dir else '-' }}
           {% endfor %}
+
+    - name: "REPORT: write consolidated Claire pre-patch summary when applicable"
+      ansible.builtin.import_tasks: tasks/prepatch/generate_prepatch_report.yml
+      tags: [prepatch]
 
     - name: "CLEANUP: remove manifest fragments"
       ansible.builtin.file:

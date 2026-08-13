@@ -193,7 +193,7 @@ There are three main dynamic group types:
 
 ```text
 environment_<environment>
-landscape_<landscape>
+customer_<customer>
 component_<component>
 ```
 
@@ -257,68 +257,38 @@ environment_<value>
 
 ---
 
-## Landscapes
+## Customers
 
-### What is a landscape?
+### What is a customer?
 
-A **landscape** represents a logical SAP system grouping.
-
-It usually corresponds to:
-
-* A specific SAP system (e.g., S/4HANA system)
-* A business domain
-* A deployment grouping across multiple servers
+A **customer** identifies the customer or account that owns a server. It is a user-defined classification stored in `servers.csv`.
 
 For example:
 
 ```text
-s4p
-ecc6
-bw4
-crm
+RTS
+CustomerA
+CustomerB
 ```
 
-A landscape typically includes multiple servers:
-
-* Database server
-* Application servers
-* ASCS server
-* Web Dispatcher
-
-### What does joining a landscape group mean?
+### What does joining a customer group mean?
 
 If a server joins:
 
 ```text
-landscape_s4p
+customer_rts
 ```
 
 it means:
 
-* It belongs to the S/4HANA production system.
-* Filters like `--landscape s4p` will include it.
-* All servers in that SAP system can be targeted together.
-
-### Possible landscape values
-
-Landscape values are user-defined and come from `servers.csv`.
-
-Common examples:
-
-| Value  | Meaning                    |
-| ------ | -------------------------- |
-| `s4p`  | S/4HANA production system  |
-| `s4d`  | S/4HANA development system |
-| `ecc6` | SAP ECC system             |
-| `bw4`  | SAP BW/4HANA system        |
-| `crm`  | SAP CRM system             |
-| `pi`   | SAP Process Integration    |
-| `epo`  | SAP Enterprise Portal      |
+* Its `customer` value is `RTS`.
+* Filters like `--customer RTS` will include it.
+* Customer fleets can be targeted directly from the customer field.
 
 Each value produces a group:
 
 ```text
-landscape_<value>
+customer_<value>
 ```
 
 ---
@@ -329,7 +299,7 @@ landscape_<value>
 
 A **component group** represents the type of SAP software installed on a server.
 
-Unlike environments and landscapes, components are derived from `instances.csv`.
+Unlike environments and customers, components are derived from `instances.csv`.
 
 ### What does joining a component group mean?
 
@@ -418,7 +388,7 @@ Meaning:
 | ------------- | ------------------- | ------------------------ |
 | Global        | `sap_hosts`         | All servers              |
 | Environment   | `environment_prod`  | Lifecycle classification |
-| Landscape     | `landscape_s4p`     | SAP system grouping      |
+| Customer      | `customer_rts`      | Customer/account grouping |
 | Component     | `component_hana`    | Installed SAP component  |
 | Compatibility | `hana_db`, `nw_app` | Legacy task routing      |
 
@@ -427,7 +397,7 @@ A single server might belong to:
 ```text
 sap_hosts
 environment_production
-landscape_s4p
+customer_rts
 component_hana
 component_abap
 hana_db
@@ -454,7 +424,7 @@ It performs these steps:
 6. Derives missing values.
 7. Generates Ansible groups.
 8. Generates legacy compatibility variables.
-9. Applies landscape overrides.
+9. Applies customer overrides.
 10. Applies server-specific overrides.
 11. Writes generated inventory and normalized JSON.
 
@@ -470,7 +440,7 @@ Overrides follow this precedence:
 
 ```text
 derived host values
-    overridden by landscape values
+    overridden by customer values
         overridden by server-specific values
 ```
 
@@ -486,7 +456,7 @@ It also joins groups based on its data:
 
 ```text
 environment_<environment>
-landscape_<landscape>
+customer_<customer>
 component_<component>
 ```
 
@@ -573,14 +543,14 @@ For example:
 
 ```bash
 --environment production \
---landscape s4p \
+--customer RTS \
 --component hana
 ```
 
 means:
 
 ```text
-production AND s4p AND contains HANA
+production AND RTS AND contains HANA
 ```
 
 Repeating a component filter also means intersection:

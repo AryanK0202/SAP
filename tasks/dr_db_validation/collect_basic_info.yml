@@ -1,0 +1,29 @@
+---
+- name: "CHECK: Can login to VM"
+  ansible.builtin.ping:
+  register: login_check
+
+- name: "ASSERT: VM login works"
+  ansible.builtin.assert:
+    that:
+      - login_check.ping == "pong"
+    fail_msg: "Unable to login to {{ inventory_hostname }} using Ansible. Result: {{ login_check }}"
+    success_msg: "Successfully logged in to {{ inventory_hostname }}."
+
+- name: "CHECK: Gather mount information"
+  ansible.builtin.command: findmnt -rn -o TARGET,SOURCE,FSTYPE,OPTIONS
+  register: mount_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: Read /etc/hosts"
+  ansible.builtin.command: cat /etc/hosts
+  register: etc_hosts_check
+  changed_when: false
+  failed_when: false
+
+- name: "CHECK: Get hostname"
+  ansible.builtin.command: hostname
+  register: hostname_check
+  changed_when: false
+  failed_when: false

@@ -1,0 +1,60 @@
+---
+# Claire pre-patch checks integrated into the repository's site.yml orchestrator.
+# This file is intentionally task-only; site.yml owns hosts, artifacts, and final reports.
+
+- name: "PREPATCH: load compatibility defaults"
+  ansible.builtin.import_tasks: tasks/prepatch/defaults.yml
+
+- name: "PREPATCH: initialize host result collection"
+  ansible.builtin.import_tasks: tasks/prepatch/init_prepatch_host.yml
+
+- name: "PREPATCH: collect basic host information"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_basic_info.yml
+
+- name: "PREPATCH: collect SAP users and groups"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_users_groups.yml
+
+- name: "PREPATCH: collect root cron configuration"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_cron.yml
+
+- name: "PREPATCH: collect Diagnostic Agent indicators"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_diagnostic_agent.yml
+
+- name: "PREPATCH: collect HANA version and plug-in information"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_hana_info.yml
+
+- name: "PREPATCH: collect security package and service information"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_package_info.yml
+
+- name: "PREPATCH: normalize collected data"
+  ansible.builtin.import_tasks: tasks/prepatch/normalize_collected_data.yml
+
+- name: "PREPATCH: map collected data to health results"
+  ansible.builtin.import_tasks: tasks/prepatch/map_existing_prepatch_checks.yml
+
+- name: "PREPATCH: check operating-system health"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_os_health.yml
+
+- name: "PREPATCH: check SAP Host Agent health"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_sap_host_agent.yml
+
+- name: "PREPATCH: check HANA instance services"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_hana_services.yml
+
+- name: "PREPATCH: check HANA System Replication"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_replication_status.yml
+
+- name: "PREPATCH: check HANA backup recency"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_backup_status.yml
+
+- name: "PREPATCH: check active HANA alerts"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_hana_alerts.yml
+
+- name: "PREPATCH: check patch execution readiness"
+  ansible.builtin.import_tasks: tasks/prepatch/collect_patch_readiness.yml
+
+- name: "PREPATCH: finalize Claire host status"
+  ansible.builtin.import_tasks: tasks/prepatch/finalize_prepatch_host.yml
+
+- name: "PREPATCH: export Claire results into the shared report accumulator"
+  ansible.builtin.import_tasks: tasks/prepatch/export_results.yml

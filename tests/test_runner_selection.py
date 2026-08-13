@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import unittest
 
-from sap_validate import _filter_tags_for_components, _selected_hosts
+from sap_validate import _build_limit, _filter_tags_for_components, _selected_hosts
 
 
 class RunnerSelectionTests(unittest.TestCase):
@@ -22,17 +22,29 @@ class RunnerSelectionTests(unittest.TestCase):
         )
         self.assertEqual(tags, ["login", "hana_version"])
 
+    def test_customer_filter_builds_customer_group_limit(self):
+        args = argparse.Namespace(
+            limit=None,
+            environment="production",
+            customer="RTS",
+            component=["hana"],
+        )
+        self.assertEqual(
+            _build_limit(args),
+            "environment_production:&customer_rts:&component_hana",
+        )
+
     def test_exact_filters_select_expected_server(self):
         normalized = {
             "servers": {
                 "hana-01": {
                     "environment": "Production",
-                    "landscape": "S4P",
+                    "customer": "RTS",
                     "components": ["hana", "host_agent"],
                 },
                 "app-01": {
                     "environment": "production",
-                    "landscape": "s4p",
+                    "customer": "rts",
                     "components": ["abap", "host_agent"],
                 },
             },
@@ -41,7 +53,7 @@ class RunnerSelectionTests(unittest.TestCase):
         args = argparse.Namespace(
             limit=None,
             environment="production",
-            landscape="s4p",
+            customer="RTS",
             component=["hana"],
             target_group=None,
         )

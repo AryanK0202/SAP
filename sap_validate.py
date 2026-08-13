@@ -55,8 +55,8 @@ def _build_limit(args: argparse.Namespace) -> str | None:
     parts: list[str] = []
     if args.environment:
         parts.append(f"environment_{_slug(args.environment)}")
-    if args.landscape:
-        parts.append(f"landscape_{_slug(args.landscape)}")
+    if args.customer:
+        parts.append(f"customer_{_slug(args.customer)}")
     for component in args.component or []:
         parts.append(f"component_{component}")
     if args.limit:
@@ -93,7 +93,7 @@ def _selected_hosts(
     for server_id, server in servers.items():
         if args.environment and _slug(str(server.get("environment", ""))) != _slug(args.environment):
             continue
-        if args.landscape and _slug(str(server.get("landscape", ""))) != _slug(args.landscape):
+        if args.customer and _slug(str(server.get("customer", ""))) != _slug(args.customer):
             continue
         if args.component and not set(args.component).issubset(set(server.get("components", []))):
             continue
@@ -188,7 +188,7 @@ def _write_run_metadata(
         "checks": args.checks,
         "components": args.component or [],
         "environment": args.environment,
-        "landscape": args.landscape,
+        "customer": args.customer,
         "batch_size": args.batch_size,
         "forks": args.forks,
         "save_raw_outputs": args.save_raw_outputs,
@@ -225,7 +225,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--generated-dir", type=Path, default=_default_path("generated"))
     parser.add_argument("--limit", help="Ansible host pattern or comma-separated server IDs")
     parser.add_argument("--environment")
-    parser.add_argument("--landscape")
+    parser.add_argument("--customer")
     parser.add_argument(
         "--component",
         action="append",
@@ -282,8 +282,8 @@ def main() -> int:
             args.component = prior_run.get("components") or None
         if not args.environment:
             args.environment = prior_run.get("environment")
-        if not args.landscape:
-            args.landscape = prior_run.get("landscape")
+        if not args.customer:
+            args.customer = prior_run.get("customer")
         if not args.save_raw_outputs:
             args.save_raw_outputs = bool(prior_run.get("save_raw_outputs", False))
         if not args.strict:

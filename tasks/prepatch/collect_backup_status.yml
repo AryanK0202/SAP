@@ -1,0 +1,129 @@
+---
+- name: "CHECK: HANA Data Backup"
+  block:
+    - name: "COLLECT: Latest successful complete HANA data backup"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json, os, re, subprocess
+        hdbsql = os.environ["HDBSQL_PATH"]
+        key = os.environ.get("HDBSQL_KEY", "").strip()
+        required = os.environ.get("BACKUP_REQUIRED", "false").lower() == "true"
+        unavailable = "RED" if required else "YELLOW"
+        record = {"category":"Backup and Recovery","name":"HANA Data Backup","status":unavailable,"observed":"not checked","details":"","source":"collect_backup_status.yml"}
+        if not key:
+            record["details"] = "hana_hdbsql_userstore_key is not configured."
+        elif not (os.path.isfile(hdbsql) and os.access(hdbsql, os.X_OK)):
+            record["details"] = f"hdbsql is unavailable at {hdbsql}."
+        else:
+            yellow = float(os.environ["YELLOW_HOURS"]); red = float(os.environ["RED_HOURS"])
+            sql = f"""
+            SELECT TOP 1
+              CASE WHEN SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600 <= {yellow} THEN 'GREEN'
+                   WHEN SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600 <= {red} THEN 'YELLOW'
+                   ELSE 'RED' END || '|' ||
+              TO_VARCHAR(SYS_START_TIME, 'YYYY-MM-DD HH24:MI:SS') || '|' ||
+              'Latest successful complete data backup age: ' ||
+              TO_VARCHAR(ROUND(SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600, 1)) || ' hours'
+            FROM SYS.M_BACKUP_CATALOG
+            WHERE ENTRY_TYPE_NAME = 'complete data backup' AND STATE_NAME = 'successful'
+            ORDER BY SYS_START_TIME DESC
+            """
+            result = subprocess.run([hdbsql,"-U",key,"-A","-x",sql], text=True, capture_output=True, check=False)
+            for line in result.stdout.splitlines():
+                candidate = line.strip().strip('"')
+                if re.match(r"^(GREEN|YELLOW|RED)\|", candidate):
+                    status, observed, details = candidate.split("|", 2)
+                    record.update(status=status, observed=observed, details=details)
+                    break
+            else:
+                record["observed"] = "not verified"
+                record["details"] = result.stderr.strip() or result.stdout.strip() or "Query returned no rows."
+        print(json.dumps([record]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        HDBSQL_PATH: "{{ prepatch_hdbsql_path }}"
+        HDBSQL_KEY: "{{ hana_hdbsql_userstore_key }}"
+        BACKUP_REQUIRED: "{{ prepatch_require_backup_check | bool | ternary('true', 'false') }}"
+        YELLOW_HOURS: "{{ prepatch_backup_yellow_hours }}"
+        RED_HOURS: "{{ prepatch_backup_red_hours }}"
+      become: true
+      become_user: "{{ sid_adm_user }}"
+      register: prepatch_data_backup_raw
+      changed_when: false
+      failed_when: false
+      no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+
+    - name: "STATUS: Add HANA data backup result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_data_backup_raw.stdout | from_json if prepatch_data_backup_raw.rc | default(1) | int == 0 and prepatch_data_backup_raw.stdout | default('') | trim | length > 0 else [{'category':'Backup and Recovery','name':'HANA Data Backup','status':'RED' if prepatch_require_backup_check | bool else 'YELLOW','observed':'collection failed','details':prepatch_data_backup_raw.stderr | default('No output', true) | trim,'source':'collect_backup_status.yml'}]) }}
+      no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+  tags: [prepatch_hana_data_backup]
+
+- name: "CHECK: HANA Log Backup"
+  block:
+    - name: "COLLECT: Latest successful HANA log backup"
+      ansible.builtin.shell: |
+        set -o pipefail
+        "{{ ansible_python_interpreter | default('/usr/bin/python3') }}" - <<'PY'
+        import json, os, re, subprocess
+        hdbsql = os.environ["HDBSQL_PATH"]
+        key = os.environ.get("HDBSQL_KEY", "").strip()
+        required = os.environ.get("BACKUP_REQUIRED", "false").lower() == "true"
+        unavailable = "RED" if required else "YELLOW"
+        record = {"category":"Backup and Recovery","name":"HANA Log Backup","status":unavailable,"observed":"not checked","details":"","source":"collect_backup_status.yml"}
+        if not key:
+            record["details"] = "hana_hdbsql_userstore_key is not configured."
+        elif not (os.path.isfile(hdbsql) and os.access(hdbsql, os.X_OK)):
+            record["details"] = f"hdbsql is unavailable at {hdbsql}."
+        else:
+            yellow = float(os.environ["YELLOW_HOURS"]); red = float(os.environ["RED_HOURS"])
+            sql = f"""
+            SELECT TOP 1
+              CASE WHEN SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600 <= {yellow} THEN 'GREEN'
+                   WHEN SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600 <= {red} THEN 'YELLOW'
+                   ELSE 'RED' END || '|' ||
+              TO_VARCHAR(SYS_START_TIME, 'YYYY-MM-DD HH24:MI:SS') || '|' ||
+              'Latest successful log backup age: ' ||
+              TO_VARCHAR(ROUND(SECONDS_BETWEEN(SYS_START_TIME, CURRENT_TIMESTAMP) / 3600, 1)) || ' hours'
+            FROM SYS.M_BACKUP_CATALOG
+            WHERE ENTRY_TYPE_NAME = 'log backup' AND STATE_NAME = 'successful'
+            ORDER BY SYS_START_TIME DESC
+            """
+            result = subprocess.run([hdbsql,"-U",key,"-A","-x",sql], text=True, capture_output=True, check=False)
+            for line in result.stdout.splitlines():
+                candidate = line.strip().strip('"')
+                if re.match(r"^(GREEN|YELLOW|RED)\|", candidate):
+                    status, observed, details = candidate.split("|", 2)
+                    record.update(status=status, observed=observed, details=details)
+                    break
+            else:
+                record["observed"] = "not verified"
+                record["details"] = result.stderr.strip() or result.stdout.strip() or "Query returned no rows."
+        print(json.dumps([record]))
+        PY
+      args:
+        executable: /bin/bash
+      environment:
+        HDBSQL_PATH: "{{ prepatch_hdbsql_path }}"
+        HDBSQL_KEY: "{{ hana_hdbsql_userstore_key }}"
+        BACKUP_REQUIRED: "{{ prepatch_require_backup_check | bool | ternary('true', 'false') }}"
+        YELLOW_HOURS: "{{ prepatch_log_backup_yellow_hours }}"
+        RED_HOURS: "{{ prepatch_log_backup_red_hours }}"
+      become: true
+      become_user: "{{ sid_adm_user }}"
+      register: prepatch_log_backup_raw
+      changed_when: false
+      failed_when: false
+      no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+
+    - name: "STATUS: Add HANA log backup result"
+      ansible.builtin.set_fact:
+        prepatch_services: >-
+          {{ prepatch_services + (prepatch_log_backup_raw.stdout | from_json if prepatch_log_backup_raw.rc | default(1) | int == 0 and prepatch_log_backup_raw.stdout | default('') | trim | length > 0 else [{'category':'Backup and Recovery','name':'HANA Log Backup','status':'RED' if prepatch_require_backup_check | bool else 'YELLOW','observed':'collection failed','details':prepatch_log_backup_raw.stderr | default('No output', true) | trim,'source':'collect_backup_status.yml'}]) }}
+      no_log: "{{ hana_hdbsql_userstore_key | length > 0 }}"
+  when: prepatch_check_log_backup | bool
+  tags: [prepatch_hana_log_backup]

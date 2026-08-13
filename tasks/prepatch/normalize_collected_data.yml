@@ -1,0 +1,162 @@
+---
+# This pre-patch copy is intentionally tagged per check. The validation
+# playbook keeps its own independent copy under tasks/validate_primary_dr_db.
+
+- name: "FACT: Initialize normalized validation data"
+  ansible.builtin.set_fact:
+    db_validation_data:
+      inventory_hostname: "{{ inventory_hostname }}"
+      ansible_host: "{{ ansible_host | default(inventory_hostname) }}"
+  tags: [always]
+
+- name: "FACT: Normalize basic filesystem and host data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'hostname': hostname_check.stdout | default('') | trim,
+            'mounts': mount_check.stdout_lines | default([]),
+            'expected_shared_mounts': shared_mount_list,
+            'mount_points': mount_check.stdout_lines | default([]) | map('split') | map('first') | list,
+            'etc_hosts': etc_hosts_check.stdout | default(''),
+            'os': (ansible_distribution | default('UNKNOWN')) ~ ' ' ~ (ansible_distribution_version | default('')),
+            'kernel': ansible_kernel | default('UNKNOWN'),
+            'architecture': ansible_architecture | default('UNKNOWN')
+          })
+      }}
+  when:
+    - hostname_check is defined
+    - mount_check is defined
+    - etc_hosts_check is defined
+  tags:
+    - prepatch_filesystem_inventory
+    - prepatch_etc_hosts
+    - prepatch_hostname
+- name: "FACT: Normalize operating-system users"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'users': dict(user_id_check.stdout_lines | default([]) | map('split', ':', 1) | list),
+            'validation_users': validation_users
+          })
+      }}
+  when: user_id_check is defined
+  tags: [prepatch_os_users]
+
+- name: "FACT: Normalize operating-system groups"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'groups': dict(group_id_check.stdout_lines | default([]) | map('split', ':', 1) | list),
+            'validation_groups': validation_groups
+          })
+      }}
+  when: group_id_check is defined
+  tags: [prepatch_os_groups]
+
+- name: "FACT: Normalize root crontab data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'root_crontab': root_crontab_check.stdout | default(''),
+            'cron_patterns': cron_pattern_list
+          })
+      }}
+  when: root_crontab_check is defined
+  tags: [prepatch_root_cron]
+
+- name: "FACT: Normalize Diagnostic Agent data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{ db_validation_data | combine({'diagnostic_agent': diagnostic_agent_check.stdout | trim}) }}
+  when: diagnostic_agent_check is defined
+  tags: [prepatch_diagnostic_agent]
+
+- name: "FACT: Normalize HANA version data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'hana_db_version': hana_db_version_check.stdout | default(''),
+            'hana_db_version_number': hana_db_version_number | default(''),
+            'hana_db_version_rc': hana_db_version_check.rc | default(1)
+          })
+      }}
+  when: hana_db_version_check is defined
+  tags: [prepatch_hana_version]
+
+- name: "FACT: Normalize HANA plug-in inventory"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{ db_validation_data | combine({'hana_plugin_inventory': hana_plugin_inventory_check.stdout_lines | default([])}) }}
+  when: hana_plugin_inventory_check is defined
+  tags: [prepatch_hana_plugin_inventory]
+
+- name: "FACT: Normalize HANA SLD registration flags"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'hana_sld_registration_required': hana_sld_registration_required | bool,
+            'hana_sld_registration_confirmed': hana_sld_registration_confirmed | bool
+          })
+      }}
+  tags: [prepatch_sld]
+
+- name: "FACT: Normalize ClamSAP validation data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'clamsap_package_status': clamsap_package_check.stdout,
+            'clamsap_runtime_status': clamsap_runtime_check.stdout | default('')
+          })
+      }}
+  when:
+    - clamsap_package_check is defined
+    - clamsap_runtime_check is defined
+  tags: [prepatch_clamsap]
+
+- name: "FACT: Normalize ClamAV daemon validation data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'clamav_installed_packages': clamav_installed_packages | default([]),
+            'clamav_detected_services': clamav_detected_services | default([]),
+            'clamav_service_results': clamav_service_results | default([]),
+            'clamav_installed': clamav_installed | default(false),
+            'clamav_service_found': clamav_service_found | default(false),
+            'clamav_service_enabled': clamav_service_enabled | default(false),
+            'clamav_service_running': clamav_service_running | default(false),
+            'clamav_validation_passed': clamav_validation_passed | default(false)
+          })
+      }}
+  when: clamav_validation_passed is defined
+  tags: [prepatch_clamav]
+
+- name: "FACT: Normalize Watchman validation data"
+  ansible.builtin.set_fact:
+    db_validation_data: >-
+      {{
+        db_validation_data
+        | combine({
+            'watchman_package_status': watchman_package_check.stdout,
+            'watchman_runtime_status': watchman_runtime_check.stdout | default('')
+          })
+      }}
+  when:
+    - watchman_package_check is defined
+    - watchman_runtime_check is defined
+  tags: [prepatch_watchman]

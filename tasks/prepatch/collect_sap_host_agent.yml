@@ -1,0 +1,93 @@
+---
+- name: "CHECK: SAP Host Agent process"
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    if [ ! -x "{{ prepatch_saphostexec_path }}" ]; then
+      echo "SAP Host Agent executable not found: {{ prepatch_saphostexec_path }}"
+      exit 3
+    fi
+
+    output=$("{{ prepatch_saphostexec_path }}" -status 2>&1)
+    command_rc=$?
+    printf '%s\n' "$output"
+
+    # Some SAP Host Agent versions return a non-zero status even though the
+    # status text confirms that the core processes are running. Use both the
+    # command result and the reported process state.
+    if printf '%s\n' "$output" | grep -Eiq '^saphostexec[[:space:]]+running'; then
+      exit 0
+    fi
+
+    if pgrep -x saphostexec >/dev/null 2>&1; then
+      exit 0
+    fi
+
+    if printf '%s\n' "$output" | grep -Eiq 'not running|stopped|failed'; then
+      exit 2
+    fi
+
+    if [ "$command_rc" -eq 0 ]; then
+      exit 2
+    fi
+
+    exit 3
+  args:
+    executable: /bin/bash
+  register: prepatch_sap_host_agent_check
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_sap_host_agent]
+
+- name: "STATUS: Add SAP Host Agent result"
+  ansible.builtin.set_fact:
+    prepatch_services: >-
+      {{
+        prepatch_services
+        + [
+            {
+              'category': 'SAP Services',
+              'name': 'SAP Host Agent',
+              'status': host_agent_status,
+              'observed': host_agent_observed,
+              'details': host_agent_details,
+              'source': 'collect_sap_host_agent.yml'
+            }
+          ]
+      }}
+  vars:
+    host_agent_rc: "{{ prepatch_sap_host_agent_check.rc | default(3) | int }}"
+    host_agent_output: >-
+      {{
+        prepatch_sap_host_agent_check.stdout
+        | default(prepatch_sap_host_agent_check.stderr | default('No output'), true)
+        | trim
+      }}
+    host_agent_running: >-
+      {{
+        (prepatch_sap_host_agent_check.rc | default(3) | int) == 0
+        or 'saphostexec running' in (host_agent_output | lower)
+      }}
+    host_agent_not_installed: >-
+      {{
+        'executable not found' in (host_agent_output | lower)
+      }}
+    host_agent_status: >-
+      {{
+        'GREEN' if host_agent_running
+        else 'RED' if prepatch_sap_host_agent_required | bool
+        else 'YELLOW'
+      }}
+    host_agent_observed: >-
+      {{
+        'running' if host_agent_running
+        else 'not installed' if host_agent_not_installed
+        else 'installed but not running'
+      }}
+    host_agent_details: >-
+      {{
+        host_agent_output
+        if host_agent_output | length > 0
+        else 'SAP Host Agent returned no status output.'
+      }}
+  tags: [prepatch_sap_host_agent]

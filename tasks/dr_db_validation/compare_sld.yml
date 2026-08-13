@@ -1,0 +1,26 @@
+---
+- name: "CHECK: HANA SLD registration required but not confirmed"
+  ansible.builtin.set_fact:
+    primary_dr_findings: >-
+      {{
+        primary_dr_findings
+        +
+        [
+          {
+            'check': 'hana_sld_registration',
+            'dr_host': item,
+            'status': 'FAIL',
+            'message': 'HANA SLD registration is marked as required, but confirmation was not provided.',
+            'details': {
+              'reference': 'https://support.sap.com/en/alm/solution-manager/expert-portal/SLD-registration-hana-sr-systems.html',
+              'hana_sld_registration_required': hostvars[item].db_validation_data.hana_sld_registration_required | default(false),
+              'hana_sld_registration_confirmed': hostvars[item].db_validation_data.hana_sld_registration_confirmed | default(false)
+            }
+          }
+        ]
+      }}
+  loop: "{{ groups['dr_db'] | default([]) }}"
+  when: >
+    (hostvars[item].db_validation_data.hana_sld_registration_required | default(false) | bool)
+    and
+    not (hostvars[item].db_validation_data.hana_sld_registration_confirmed | default(false) | bool)

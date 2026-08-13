@@ -1,0 +1,7 @@
+---
+- name: "CHECK: Root crontab"
+  ansible.builtin.command: crontab -l -u root
+  become: true
+  register: root_crontab_check
+  changed_when: false
+  failed_when: false
