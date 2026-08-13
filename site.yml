@@ -128,6 +128,9 @@
     
     - name: "LOAD: availability checks"
       ansible.builtin.import_tasks: tasks/availability_checks/scc_availability.yml
+    
+    - name: "LOAD: prepatch readiness checks"
+      ansible.builtin.import_tasks: tasks/prepatch/patch_readiness.yml
 
     # tasks/cloud.yml is intentionally not imported until an AWS DLM policy
     # ID and controller credentials are confirmed.

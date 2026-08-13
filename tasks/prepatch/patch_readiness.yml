@@ -1,0 +1,54 @@
+---
+# Read-only Pre-patch readiness validations.
+# Tags: prepatch_validations
+
+- name: "SYSTEM HEALTH: Check root disk space"
+  ansible.builtin.shell: df -m / | awk 'NR==2 {print $4}'
+  register: root_disk_space
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_validations]
+
+- name: "REPORT: record root disk space result"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'Root Disk Space (Pre-patch)',
+        'status': 'PASS' if (root_disk_space.stdout | default(0) | int >= 2048) else 'FAIL',
+        'details': (root_disk_space.stdout | default(0) | string) ~ ' MB free (Minimum: 2048 MB).'
+      }] }}
+  tags: [prepatch_validations]
+
+- name: "SYSTEM HEALTH: Record running services before patching"
+  ansible.builtin.shell: systemctl list-units --type=service --state=running --no-legend | awk '{print $1}'
+  register: pre_patch_services
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_validations]
+
+- name: "SYSTEM HEALTH: save pre-patch services list"
+  ansible.builtin.copy:
+    dest: "{{ host_raw_dir }}/pre_patch_services.txt"
+    mode: "0644"
+    content: "{{ pre_patch_services.stdout | default('No services found') }}"
+  delegate_to: localhost
+  become: false
+  when: save_raw_outputs | default(false) | bool
+  tags: [prepatch_validations]
+
+- name: "SYSTEM HEALTH: Record installed kernel version"
+  ansible.builtin.command: uname -r
+  register: pre_patch_kernel
+  changed_when: false
+  failed_when: false
+  tags: [prepatch_validations]
+
+- name: "REPORT: record current kernel version"
+  ansible.builtin.set_fact:
+    hana_check_results: >-
+      {{ hana_check_results + [{
+        'check': 'Current Kernel Version',
+        'status': 'PASS',
+        'details': 'Running kernel: ' ~ (pre_patch_kernel.stdout | default('unknown'))
+      }] }}
+  tags: [prepatch_validations]

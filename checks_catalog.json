@@ -1126,6 +1126,18 @@
       "ansible_tag": "scc_availability",
       "task_file": "tasks/availability/scc_availability.yml",
       "implementation_status": "runs_today"
+    },
+    {
+      "id": "prepatch_readiness",
+      "category": "System Health",
+      "group": "Prepatch",
+      "contributor": "Martyl",
+      "task": "Verify root disk space and capture pre-patch system state",
+      "scope": "host",
+      "component": "operating_system",
+      "ansible_tag": "prepatch_validations",
+      "task_file": "tasks/prepatch/patch_readiness.yml",
+      "implementation_status": "runs_today"
     }
   ],
   "profiles": {
